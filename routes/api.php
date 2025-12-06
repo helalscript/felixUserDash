@@ -13,6 +13,7 @@ use App\Http\Controllers\API\V1\Auth\UserController;
 use App\Http\Controllers\API\V1\Public\GeneralSettingController;
 use App\Http\Controllers\API\V1\User\AddonController as UserAddonController;
 use App\Http\Controllers\API\V1\User\NotificationController;
+use App\Http\Controllers\API\V1\User\OrderController as UserOrderController;
 use App\Http\Controllers\API\V1\User\PackageController as UserPackageController;
 use Illuminate\Support\Facades\Route;
 
@@ -44,6 +45,10 @@ Route::group(['middleware' => 'auth:api'], function ($router) {
 Route::group(['middleware' => ['auth:api', 'is_user']], function ($router) {
     // addons
     Route::apiResource('addons', UserAddonController::class)->only(['index', 'show']);
+    
+    //orders
+    Route::apiResource('orders', UserOrderController::class)->only(['index', 'store', 'show']);
+
     // notifications
     Route::apiResource('notifications', NotificationController::class)->only(['index', 'show']);
     Route::post('notifications/mark-all-as-read', [NotificationController::class, 'markAllAsRead']);

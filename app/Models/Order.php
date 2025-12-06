@@ -15,7 +15,8 @@ class Order extends Model
      * @var array<int, string>
      */
     protected $fillable = [
-        'order_id',
+        'orderable_id',
+        'orderable_type',
         'user_id',
         'order_number',
         'progress',
@@ -31,7 +32,8 @@ class Order extends Model
      * @var array<string, string>
      */
     protected $casts = [
-        'order_id' => 'integer',
+        'orderable_id' => 'integer',
+        'orderable_type' => 'string',
         'user_id' => 'integer',
         'order_number' => 'string',
         'progress' => 'integer',
@@ -39,8 +41,6 @@ class Order extends Model
         'end_date' => 'date:Y-m-d',
         'amount' => 'decimal:2',
         'status' => 'string',
-        'created_at' => 'datetime',
-        'updated_at' => 'datetime',
     ];
 
     /**
@@ -81,6 +81,11 @@ class Order extends Model
     public function payments()
     {
         return $this->morphMany(Payment::class, 'paymentable');
+    }
+
+    public function orderable()
+    {
+        return $this->morphTo();
     }
 }
 

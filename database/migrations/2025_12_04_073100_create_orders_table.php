@@ -13,13 +13,8 @@ return new class extends Migration
     {
         Schema::create('orders', function (Blueprint $table) {
             $table->id();
-
-            // Foreign keys
-            $table->unsignedBigInteger('order_id')->nullable();
-            $table->foreignId('user_id')
-                ->constrained()
-                ->cascadeOnDelete();
-
+            $table->morphs('orderable'); // This creates orderable_id and orderable_type for polymorphic relationship
+            $table->foreignId('user_id')->constrained()->cascadeOnDelete();
             // Order details
             $table->string('order_number')->unique();
             $table->unsignedTinyInteger('progress')->default(0); // percentage 0–100
