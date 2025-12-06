@@ -2,6 +2,7 @@
 
 namespace App\Services\API\V1\User;
 
+use App\Models\Addon;
 use Exception;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Auth;
@@ -22,7 +23,10 @@ class AddonService
     public function index($request)
     {
         try {
-            
+            $per_page = $request->per_page ?? 25;   
+            $addons = Addon::select('id', 'title', 'sub_title', 'description', 'price', 'status')
+                ->paginate($per_page);
+            return $addons;
         } catch (Exception $e) {
          Log::error("AddonService::index" . $e->getMessage());
             throw $e;
@@ -30,21 +34,6 @@ class AddonService
         }
     }
 
-    /**
-     * Store a new resource.
-     *
-     * @param array $validatedData
-     * @return mixed
-     */
-    public function store(array $validatedData)
-    {
-        try {
-            
-        } catch (Exception $e) {
-         Log::error("AddonService::store" . $e->getMessage());
-            throw $e;
-        }
-    }
 
     /**
      * Display a specific resource.
@@ -55,44 +44,17 @@ class AddonService
     public function show(int $id)
     {
         try {
-            
+            $addon = Addon::select('id', 'title', 'sub_title', 'description', 'price', 'status')
+                ->find($id);
+            if (! $addon) {
+                throw new Exception('Addon not found');
+            }
+            return $addon;
         } catch (Exception $e) {
          Log::error("AddonService::show" . $e->getMessage());
             throw $e;
         }
     }
 
-    /**
-     * Update a specific resource.
-     *
-     * @param int $id
-     * @param array $validatedData
-     * @return mixed
-     */
-    public function update(int $id, array $validatedData)
-    {
-        try {
-            
-        } catch (Exception $e) {
-         Log::error("AddonService::update" . $e->getMessage());
-            throw $e;
-        }
-    }
-
-    /**
-     * Delete a specific resource.
-     *
-     * @param int $id
-     * @return mixed
-     */
-    public function destroy(int $id)
-    {
-        try {
-            // Logic to delete a specific resource
-        } catch (Exception $e) {
-         Log::error("AddonService::destroy" . $e->getMessage());
-            throw $e;
-        }
-    }
 
 }
