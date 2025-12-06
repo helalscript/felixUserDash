@@ -6,6 +6,8 @@ use App\Models\User;
 // use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\Hash;
+use Database\Seeders\PackageSeeder;
+use Database\Seeders\OrderAddonSeeder;
 
 class DatabaseSeeder extends Seeder
 {
@@ -38,5 +40,7 @@ class DatabaseSeeder extends Seeder
         ]);
         $this->call(SystemSettingSeeder::class);
         $this->call(DynamicPageSeeder::class);
+        $this->call(PackageSeeder::class);
+        $this->call(OrderAddonSeeder::class);
     }
 }
