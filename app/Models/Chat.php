@@ -20,6 +20,22 @@ class Chat extends Model
         'created_at' => 'datetime',
         'updated_at' => 'datetime',
     ];
+
+    /**
+     * Get the chat users for this chat.
+     */
+    public function chatUsers()
+    {
+        return $this->hasMany(ChatUser::class);
+    }
+
+    /**
+     * Get the messages for this chat.
+     */
+    public function messages()
+    {
+        return $this->hasMany(Message::class);
+    }
 }
 
 

@@ -28,6 +28,22 @@ class Message extends Model
         'updated_at' => 'datetime',
         'deleted_at' => 'datetime',
     ];
+
+    /**
+     * Get the chat that owns the message.
+     */
+    public function chat()
+    {
+        return $this->belongsTo(Chat::class);
+    }
+
+    /**
+     * Get the user that owns the message.
+     */
+    public function user()
+    {
+        return $this->belongsTo(User::class);
+    }
 }
 
 
