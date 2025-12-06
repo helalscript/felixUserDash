@@ -13,12 +13,12 @@ return new class extends Migration
     {
         Schema::create('payments', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('user_id')->constrained()->onDelete('cascade');
+            $table->foreignId('user_id')->nullable()->constrained()->onDelete('set null');
             $table->morphs('payable'); // This creates payable_id and payable_type for polymorphic relationship
             $table->timestamp('pay_at');
-            $table->string('intend_id');
+            $table->string('intend_id')->nullable();
             $table->decimal('amount', 10, 2);
-            $table->string('status')->default('pending');
+            $table->string('status')->default('pending'); //'pending', 'paid', 'failed', 'refunded'
             $table->timestamps();
         });
     }
