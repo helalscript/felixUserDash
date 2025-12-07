@@ -26,7 +26,7 @@ class SupportChatController extends Controller
 
             return Helper::jsonResponse(true, 'Support chats fetched successfully', 200, $supportChats, true);
         } catch (Exception $e) {
-            Log::error('SupportChatController::index' . $e->getMessage());
+            Log::error('SupportChatController::index'.$e->getMessage());
 
             return Helper::jsonErrorResponse($e->getMessage(), 500);
         }
@@ -48,7 +48,7 @@ class SupportChatController extends Controller
 
             return Helper::jsonResponse(true, 'Support message sent successfully', 200, $result);
         } catch (Exception $e) {
-            Log::error('SupportChatController::store' . $e->getMessage());
+            Log::error('SupportChatController::store'.$e->getMessage());
 
             return Helper::jsonErrorResponse($e->getMessage(), 500);
         }
@@ -64,12 +64,11 @@ class SupportChatController extends Controller
 
             return Helper::jsonResponse(true, 'Support chat messages fetched successfully', 200, $result);
         } catch (Exception $e) {
-            Log::error('SupportChatController::show' . $e->getMessage());
+            Log::error('SupportChatController::show'.$e->getMessage());
 
             return Helper::jsonErrorResponse($e->getMessage(), 500);
         }
     }
-
 
     public function getMessages(Request $request)
     {
@@ -78,11 +77,26 @@ class SupportChatController extends Controller
 
             return Helper::jsonResponse(true, 'Support chat messages fetched successfully', 200, $result);
         } catch (Exception $e) {
-            Log::error('SupportChatController::getMessages' . $e->getMessage());
+            Log::error('SupportChatController::getMessages'.$e->getMessage());
 
             return Helper::jsonErrorResponse($e->getMessage(), 500);
         }
     }
 
+    public function sendMessage(Request $request)
+    {
+        $validatedData = $request->validate([
+            'message' => 'required|string|max:5000',
+            'file' => 'nullable|file|mimes:pdf,doc,docx,xls,xlsx,ppt,pptx,jpg,jpeg,png,gif,svg,webp|max:5120',
+        ]);
+        try {
+            $result = $this->supportChatService->sendMessage($validatedData);
 
+            return Helper::jsonResponse(true, 'Message sent successfully', 200, $result);
+        } catch (Exception $e) {
+            Log::error('SupportChatController::sendMessage'.$e->getMessage());
+
+            return Helper::jsonErrorResponse($e->getMessage(), 500);
+        }
+    }
 }

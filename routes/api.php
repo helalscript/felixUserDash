@@ -62,6 +62,7 @@ Route::group(['middleware' => ['auth:api', 'is_user']], function ($router) {
     // support chats
     // Route::apiResource('support-chats', SupportChatController::class)->only(['index', 'store', 'show']);
     Route::get('support-chats/get-messages', [SupportChatController::class, 'getMessages']);
+    Route::post('support-chats/send-message', [SupportChatController::class, 'sendMessage']);
 });
 
 // this is for admin
