@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\API\V1\Admin\Addon\AddonController as AdminAddonController;
+use App\Http\Controllers\API\V1\Admin\Order\OrderController as AdminOrderController;
 use App\Http\Controllers\API\V1\Admin\Package\PackageController as AdminPackageController;
 use App\Http\Controllers\API\V1\Admin\SupportChat\SupportChatController as AdminSupportChatController;
 use App\Http\Controllers\API\V1\Admin\System\DynamicPageController;
@@ -81,6 +82,10 @@ Route::group(['middleware' => ['auth:api', 'is_admin'], 'prefix' => 'admin'], fu
     // support chats
     Route::apiResource('support-chats', AdminSupportChatController::class)->except('update');
     Route::post('support-chats/send-message', [AdminSupportChatController::class, 'sendMessage']);
+
+    // orders
+    Route::apiResource('orders', AdminOrderController::class)->except('update','store');
+    Route::post('orders/update-status/{id}', [AdminOrderController::class, 'updateStatus']);
 });
 
 // this is for public

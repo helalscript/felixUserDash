@@ -14,8 +14,8 @@ return new class extends Migration
         Schema::create('payments', function (Blueprint $table) {
             $table->id();
             $table->foreignId('user_id')->nullable()->constrained()->onDelete('set null');
-            $table->morphs('payable'); // This creates payable_id and payable_type for polymorphic relationship
-            $table->timestamp('pay_at');
+            $table->morphs('paymentable'); // This creates paymentable_id and paymentable_type for polymorphic relationship
+            $table->timestamp('paid_at');
             $table->string('intend_id')->nullable();
             $table->decimal('amount', 10, 2);
             $table->string('status')->default('pending'); //'pending', 'paid', 'failed', 'refunded'
