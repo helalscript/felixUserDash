@@ -73,23 +73,23 @@ class SupportChatController extends Controller
     /**
      * Update the specified resource in storage.
      */
-    public function update(Request $request, string $id)
-    {
-        $validatedData = $request->validate([
-            'subject' => 'nullable|string|max:255',
-            'message' => 'required|string|max:5000',
-            'file' => 'nullable|file|mimes:pdf,doc,docx,xls,xlsx,ppt,pptx,jpg,jpeg,png,gif,svg,webp|max:20480',
-        ]);
-        try {
-            $supportChat = $this->supportChatService->update($id, $validatedData);
+    // public function update(Request $request, string $id)
+    // {
+    //     $validatedData = $request->validate([
+    //         'subject' => 'nullable|string|max:255',
+    //         'message' => 'required|string|max:5000',
+    //         'file' => 'nullable|file|mimes:pdf,doc,docx,xls,xlsx,ppt,pptx,jpg,jpeg,png,gif,svg,webp|max:20480',
+    //     ]);
+    //     try {
+    //         $supportChat = $this->supportChatService->update($id, $validatedData);
 
-            return Helper::jsonResponse(true, 'Support chat updated successfully', 200, $supportChat);
-        } catch (Exception $e) {
-            Log::error('SupportChatController::update'.$e->getMessage());
+    //         return Helper::jsonResponse(true, 'Support chat updated successfully', 200, $supportChat);
+    //     } catch (Exception $e) {
+    //         Log::error('SupportChatController::update'.$e->getMessage());
 
-            return Helper::jsonErrorResponse($e->getMessage(), 500);
-        }
-    }
+    //         return Helper::jsonErrorResponse($e->getMessage(), 500);
+    //     }
+    // }
 
     /**
      * Remove the specified resource from storage.
@@ -102,6 +102,24 @@ class SupportChatController extends Controller
             return Helper::jsonResponse(true, 'Support chat deleted successfully', 200, $supportChat);
         } catch (Exception $e) {
             Log::error('SupportChatController::destroy'.$e->getMessage());
+
+            return Helper::jsonErrorResponse($e->getMessage(), 500);
+        }
+    }
+
+    public function sendMessage(Request $request)
+    {
+        $validatedData = $request->validate([
+            'support_chat_id' => 'required|exists:support_chats,id',
+            'message' => 'required_without:file|string|max:5000',
+            'file' => 'required_without:message|file|mimes:pdf,doc,docx,xls,xlsx,ppt,pptx,jpg,jpeg,png,gif,svg,webp|max:20480',
+        ]);
+        try {
+            $supportChat = $this->supportChatService->sendMessage($validatedData);
+
+            return Helper::jsonResponse(true, 'Message sent successfully', 200, $supportChat);
+        } catch (Exception $e) {
+            Log::error('SupportChatController::sendMessage'.$e->getMessage());
 
             return Helper::jsonErrorResponse($e->getMessage(), 500);
         }
