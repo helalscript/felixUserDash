@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\API\V1\Admin\Addon\AddonController as AdminAddonController;
 use App\Http\Controllers\API\V1\Admin\Package\PackageController as AdminPackageController;
+use App\Http\Controllers\API\V1\Admin\SupportChat\SupportChatController as AdminSupportChatController;
 use App\Http\Controllers\API\V1\Admin\System\DynamicPageController;
 use App\Http\Controllers\API\V1\Admin\SystemSettingController;
 use App\Http\Controllers\API\V1\Auth\LoginController;
@@ -12,11 +13,10 @@ use App\Http\Controllers\API\V1\Auth\SocialLoginController;
 use App\Http\Controllers\API\V1\Auth\UserController;
 use App\Http\Controllers\API\V1\Public\GeneralSettingController;
 use App\Http\Controllers\API\V1\User\AddonController as UserAddonController;
-use App\Http\Controllers\API\V1\User\ChatController;
 use App\Http\Controllers\API\V1\User\NotificationController;
 use App\Http\Controllers\API\V1\User\OrderController as UserOrderController;
 use App\Http\Controllers\API\V1\User\PackageController as UserPackageController;
-use App\Http\Controllers\API\V1\User\SupportChatController;
+use App\Http\Controllers\API\V1\User\SupportChatController as UserSupportChatController;
 use Illuminate\Support\Facades\Route;
 
 Route::group(['middleware' => ['guest:api']], function ($router) {
@@ -47,29 +47,26 @@ Route::group(['middleware' => 'auth:api'], function ($router) {
 Route::group(['middleware' => ['auth:api', 'is_user']], function ($router) {
     // addons
     Route::apiResource('addons', UserAddonController::class)->only(['index', 'show']);
-    
-    //orders
+
+    // orders
     Route::apiResource('orders', UserOrderController::class)->only(['index', 'store', 'show']);
 
     // notifications
     Route::apiResource('notifications', NotificationController::class)->only(['index', 'show']);
     Route::post('notifications/mark-all-as-read', [NotificationController::class, 'markAllAsRead']);
     Route::delete('notifications/delete-all', [NotificationController::class, 'deleteAll']);
-    
-    // chats
-    // Route::apiResource('chats', ChatController::class)->only(['index', 'store', 'show']);
-    
+
     // support chats
     // Route::apiResource('support-chats', SupportChatController::class)->only(['index', 'store', 'show']);
-    Route::get('support-chats/get-messages', [SupportChatController::class, 'getMessages']);
-    Route::post('support-chats/send-message', [SupportChatController::class, 'sendMessage']);
+    Route::get('support-chats/get-messages', [UserSupportChatController::class, 'getMessages']);
+    Route::post('support-chats/send-message', [UserSupportChatController::class, 'sendMessage']);
 });
 
 // this is for admin
 Route::group(['middleware' => ['auth:api', 'is_admin'], 'prefix' => 'admin'], function ($router) {
     Route::apiResource('packages', AdminPackageController::class);
     Route::apiResource('addons', AdminAddonController::class);
-    
+
     // dynamic pages
     Route::apiResource('dynamic-pages', DynamicPageController::class);
     // system settings
@@ -80,9 +77,10 @@ Route::group(['middleware' => ['auth:api', 'is_admin'], 'prefix' => 'admin'], fu
         Route::post('mail-settings', [SystemSettingController::class, 'updateMailSetting']);
         Route::get('clear-cache', [SystemSettingController::class, 'clearCache']);
     });
-    
-    // chats (admin can also access chats)
-    Route::apiResource('chats', ChatController::class)->only(['index', 'store', 'show']);
+
+    // support chats
+    Route::apiResource('support-chats', AdminSupportChatController::class)->except('update');
+    Route::post('support-chats/send-message', [AdminSupportChatController::class, 'sendMessage']);
 });
 
 // this is for public

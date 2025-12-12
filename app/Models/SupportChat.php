@@ -38,4 +38,15 @@ class SupportChat extends Model
     {
         return $this->hasMany(SupportMessage::class);
     }
+
+    public function lastMessage()
+    {
+        return $this->hasOne(SupportMessage::class)->latestOfMany()
+        ->select([
+            'support_messages.id',
+            'support_messages.support_chat_id',
+            'support_messages.message',
+            'support_messages.file'
+        ]);;
+    }
 }
