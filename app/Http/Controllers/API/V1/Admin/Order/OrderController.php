@@ -99,4 +99,21 @@ class OrderController extends Controller
             return Helper::jsonErrorResponse($e->getMessage(), 500);
         }
     }
+
+    // file upload
+    public function fileUpload(Request $request, string $id)
+    {
+        $validatedData = $request->validate([
+            'attachment' => 'required|file|mimes:pdf,doc,docx,xls,xlsx,ppt,pptx,jpg,jpeg,png,gif,svg,webp|max:20480',
+        ]);
+        try {
+            $orderDelivery = $this->orderService->fileUpload($id, $validatedData);
+
+            return Helper::jsonResponse(true, 'Order delivery file uploaded successfully', 200, $orderDelivery);
+        } catch (Exception $e) {
+            Log::error('OrderController::fileUpload'.$e->getMessage());
+
+            return Helper::jsonErrorResponse($e->getMessage(), 500);
+        }
+    }
 }

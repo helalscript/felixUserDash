@@ -2,9 +2,12 @@
 
 namespace App\Services\API\V1\Admin\Order;
 
+use App\Helpers\Helper;
 use App\Models\Order;
+use App\Models\OrderDelivery;
 use Exception;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
 class OrderService
@@ -67,7 +70,7 @@ class OrderService
     public function show(int $id)
     {
         try {
-            $order = Order::with(['orderable', 'detail', 'user:id,name,email,phone,avatar', 'invoices', 'payments'])->find($id);
+            $order = Order::with(['orderable', 'detail', 'user:id,name,email,phone,avatar', 'invoices', 'payments', 'delivery'])->find($id);
             if (! $order) {
                 throw new Exception('Order not found');
             }
@@ -122,8 +125,33 @@ class OrderService
         }
     }
 
-    public function fileUpload()
+    public function fileUpload(int $id, array $validatedData)
     {
-        //
+        try {
+            DB::beginTransaction();
+            $order = Order::find($id);
+            if (! $order) {
+                throw new Exception('Order not found');
+            }
+            $orderDelivery = OrderDelivery::where('order_id', $order->id)->first();
+            if (! $orderDelivery) {
+                throw new Exception('Order delivery not found');
+            }
+            //file upload
+            if (isset($validatedData['attachment'])) {
+                $validatedData['attachment'] = Helper::fileUpload(
+                    $validatedData['attachment'],
+                    'order/deliveries',
+                    'order_delivery_'.time()
+                );
+            }
+            $orderDelivery->fill($validatedData)->save();
+            DB::commit();
+            return $orderDelivery;
+        } catch (Exception $e) {
+            DB::rollBack();
+            Log::error('OrderService::fileUpload'.$e->getMessage());
+            throw $e;
+        }
     }
 }

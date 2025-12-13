@@ -86,6 +86,7 @@ Route::group(['middleware' => ['auth:api', 'is_admin'], 'prefix' => 'admin'], fu
     // orders
     Route::apiResource('orders', AdminOrderController::class)->except('update','store');
     Route::post('orders/update-status/{id}', [AdminOrderController::class, 'updateStatus']);
+    Route::post('orders/file-upload/{id}', [AdminOrderController::class, 'fileUpload']);
 });
 
 // this is for public
