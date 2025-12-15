@@ -104,12 +104,13 @@ class OrderController extends Controller
     public function fileUpload(Request $request, string $id)
     {
         $validatedData = $request->validate([
-            'attachment' => 'required|file|mimes:pdf,doc,docx,xls,xlsx,ppt,pptx,jpg,jpeg,png,gif,svg,webp|max:20480',
+            'attachment' => 'required|array',
+            'attachment.*' => 'required|file|mimes:pdf,doc,docx,xls,xlsx,ppt,pptx,jpg,jpeg,png,gif,svg,webp,mp4,mov,avi,wmv,flv,mkv,webm,mp3,wav,ogg,m4a,aac,flac,opus,mka,m4b,m4p,m4v,m4a,aac,flac,opus,mka,m4b,m4p,m4v|max:212000', // 200MB
         ]);
         try {
-            $orderDelivery = $this->orderService->fileUpload($id, $validatedData);
+            $order = $this->orderService->fileUpload($id, $validatedData);
 
-            return Helper::jsonResponse(true, 'Order delivery file uploaded successfully', 200, $orderDelivery);
+            return Helper::jsonResponse(true, 'Order delivery file uploaded successfully', 200, $order);
         } catch (Exception $e) {
             Log::error('OrderController::fileUpload'.$e->getMessage());
 

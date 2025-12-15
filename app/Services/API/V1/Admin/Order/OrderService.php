@@ -34,7 +34,7 @@ class OrderService
             $dateTo = $request->date_to ?? null;
 
             $query = Order::query()
-                ->with('orderable', 'detail', 'user:id,name,email,phone,avatar', 'invoices', 'payments')
+                ->with('orderable', 'detail', 'user:id,name,email,phone,avatar', 'invoices', 'payments', 'delivery')
                 ->when($search, function ($query) use ($search) {
                     $query->where('order_number', 'like', '%'.$search.'%')
                         ->orWhereHas('orderable', function ($orderableQuery) use ($search) {
@@ -133,21 +133,23 @@ class OrderService
             if (! $order) {
                 throw new Exception('Order not found');
             }
-            $orderDelivery = OrderDelivery::where('order_id', $order->id)->first();
-            if (! $orderDelivery) {
-                throw new Exception('Order delivery not found');
-            }
             //file upload
             if (isset($validatedData['attachment'])) {
-                $validatedData['attachment'] = Helper::fileUpload(
-                    $validatedData['attachment'],
-                    'order/deliveries',
-                    'order_delivery_'.time()
-                );
+                $validatedData['attachment'] = array_map(function ($attachment) {
+                    return Helper::fileUpload(
+                        $attachment,
+                        'order/deliveries',
+                        'order_delivery_'.time()
+                    );
+                }, $validatedData['attachment']);
             }
-            $orderDelivery->fill($validatedData)->save();
+            $order->delivery()->create([
+                'attachment' => $validatedData['attachment'],
+                'status' => 'delivered',
+            ]);
+            
             DB::commit();
-            return $orderDelivery;
+            return $order;
         } catch (Exception $e) {
             DB::rollBack();
             Log::error('OrderService::fileUpload'.$e->getMessage());

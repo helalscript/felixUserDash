@@ -25,6 +25,7 @@ class OrderController extends Controller
         try {
             $orders = $this->orderService->index($request);
 
+            // return Helper::jsonResponse(true, 'Orders fetched successfully', 200, $orders, true);
             return Helper::jsonResponse(true, 'Orders fetched successfully', 200, OrderResource::collection($orders), true);
         } catch (Exception $e) {
             Log::error('OrderController::index'.$e->getMessage());
