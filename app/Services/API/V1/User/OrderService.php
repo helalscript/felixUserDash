@@ -2,6 +2,7 @@
 
 namespace App\Services\API\V1\User;
 
+use App\Helpers\Helper;
 use App\Models\Addon;
 use App\Models\Order;
 use App\Models\OrderDetail;
@@ -96,6 +97,16 @@ class OrderService
                 'status' => 'pending',
             ]);
 
+            //file upload
+            if (isset($validatedData['attachment'])) {
+                $validatedData['attachment'] = array_map(function ($attachment) {
+                    return Helper::fileUpload(
+                        $attachment,
+                        'order/details',
+                        'order_detail_'.time()
+                    );
+                }, $validatedData['attachment']);
+            }
             // Create order detail
             $orderDetail = OrderDetail::create([
                 'order_id' => $order->id,
