@@ -87,6 +87,11 @@ class Order extends Model
     {
         return $this->morphTo();
     }
+
+    public function delivery()
+    {
+        return $this->hasOne(OrderDelivery::class);
+    }
 }
 
 
