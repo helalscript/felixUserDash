@@ -14,6 +14,7 @@ use App\Http\Controllers\API\V1\Auth\SocialLoginController;
 use App\Http\Controllers\API\V1\Auth\UserController;
 use App\Http\Controllers\API\V1\Public\GeneralSettingController;
 use App\Http\Controllers\API\V1\User\AddonController as UserAddonController;
+use App\Http\Controllers\API\V1\User\InvoiceController as UserInvoiceController;
 use App\Http\Controllers\API\V1\User\NotificationController;
 use App\Http\Controllers\API\V1\User\OrderController as UserOrderController;
 use App\Http\Controllers\API\V1\User\PackageController as UserPackageController;
@@ -67,6 +68,9 @@ Route::group(['middleware' => ['auth:api', 'is_user']], function ($router) {
     Route::get('payments', [UserPaymentController::class, 'getAllPayment']);
     Route::get('payments/single/{id}', [UserPaymentController::class, 'getSinglePayment']);
     Route::post('payments/create-payment-intent', [UserPaymentController::class, 'createPaymentIntent']);
+
+    //invoices
+    Route::apiResource('invoices', UserInvoiceController::class)->only(['index', 'show']);
 });
 // this is for user payment webhook in public route
 Route::post('payments/stripe/handle-webhook', [UserPaymentController::class, 'handleWebhook']);

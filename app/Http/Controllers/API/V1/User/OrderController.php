@@ -70,7 +70,8 @@ class OrderController extends Controller
         try {
             $order = $this->orderService->show($id);
 
-            return Helper::jsonResponse(true, 'Order fetched successfully', 200, new OrderResource($order));
+            return Helper::jsonResponse(true, 'Order fetched successfully', 200, $order);
+            // return Helper::jsonResponse(true, 'Order fetched successfully', 200, new OrderResource($order));
         } catch (Exception $e) {
             Log::error('OrderController::show'.$e->getMessage());
 
