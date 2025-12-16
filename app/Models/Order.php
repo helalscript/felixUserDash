@@ -23,6 +23,7 @@ class Order extends Model
         'start_date',
         'end_date',
         'amount',
+        'payment_status',
         'status',
     ];
 
@@ -40,6 +41,7 @@ class Order extends Model
         'start_date' => 'date:Y-m-d',
         'end_date' => 'date:Y-m-d',
         'amount' => 'decimal:2',
+        'payment_status' => 'string',
         'status' => 'string',
     ];
 
@@ -86,6 +88,11 @@ class Order extends Model
     public function orderable()
     {
         return $this->morphTo();
+    }
+
+    public function delivery()
+    {
+        return $this->hasOne(OrderDelivery::class);
     }
 }
 

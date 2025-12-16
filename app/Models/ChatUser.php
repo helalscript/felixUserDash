@@ -24,6 +24,22 @@ class ChatUser extends Model
         'created_at' => 'datetime',
         'updated_at' => 'datetime',
     ];
+
+    /**
+     * Get the chat that owns the chat user.
+     */
+    public function chat()
+    {
+        return $this->belongsTo(Chat::class);
+    }
+
+    /**
+     * Get the user that owns the chat user.
+     */
+    public function user()
+    {
+        return $this->belongsTo(User::class);
+    }
 }
 
 

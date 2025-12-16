@@ -1,7 +1,9 @@
 <?php
 
 use App\Http\Controllers\API\V1\Admin\Addon\AddonController as AdminAddonController;
+use App\Http\Controllers\API\V1\Admin\Order\OrderController as AdminOrderController;
 use App\Http\Controllers\API\V1\Admin\Package\PackageController as AdminPackageController;
+use App\Http\Controllers\API\V1\Admin\SupportChat\SupportChatController as AdminSupportChatController;
 use App\Http\Controllers\API\V1\Admin\System\DynamicPageController;
 use App\Http\Controllers\API\V1\Admin\SystemSettingController;
 use App\Http\Controllers\API\V1\Auth\LoginController;
@@ -12,9 +14,12 @@ use App\Http\Controllers\API\V1\Auth\SocialLoginController;
 use App\Http\Controllers\API\V1\Auth\UserController;
 use App\Http\Controllers\API\V1\Public\GeneralSettingController;
 use App\Http\Controllers\API\V1\User\AddonController as UserAddonController;
+use App\Http\Controllers\API\V1\User\InvoiceController as UserInvoiceController;
 use App\Http\Controllers\API\V1\User\NotificationController;
 use App\Http\Controllers\API\V1\User\OrderController as UserOrderController;
 use App\Http\Controllers\API\V1\User\PackageController as UserPackageController;
+use App\Http\Controllers\API\V1\User\PaymentController as UserPaymentController;
+use App\Http\Controllers\API\V1\User\SupportChatController as UserSupportChatController;
 use Illuminate\Support\Facades\Route;
 
 Route::group(['middleware' => ['guest:api']], function ($router) {
@@ -45,21 +50,36 @@ Route::group(['middleware' => 'auth:api'], function ($router) {
 Route::group(['middleware' => ['auth:api', 'is_user']], function ($router) {
     // addons
     Route::apiResource('addons', UserAddonController::class)->only(['index', 'show']);
-    
-    //orders
+
+    // orders
     Route::apiResource('orders', UserOrderController::class)->only(['index', 'store', 'show']);
 
     // notifications
     Route::apiResource('notifications', NotificationController::class)->only(['index', 'show']);
     Route::post('notifications/mark-all-as-read', [NotificationController::class, 'markAllAsRead']);
     Route::delete('notifications/delete-all', [NotificationController::class, 'deleteAll']);
+
+    // support chats
+    // Route::apiResource('support-chats', SupportChatController::class)->only(['index', 'store', 'show']);
+    Route::get('support-chats/get-messages', [UserSupportChatController::class, 'getMessages']);
+    Route::post('support-chats/send-message', [UserSupportChatController::class, 'sendMessage']);
+
+    // payments
+    Route::get('payments', [UserPaymentController::class, 'getAllPayment']);
+    Route::get('payments/single/{id}', [UserPaymentController::class, 'getSinglePayment']);
+    Route::post('payments/create-payment-intent', [UserPaymentController::class, 'createPaymentIntent']);
+
+    //invoices
+    Route::apiResource('invoices', UserInvoiceController::class)->only(['index', 'show']);
 });
+// this is for user payment webhook in public route
+Route::post('payments/stripe/handle-webhook', [UserPaymentController::class, 'handleWebhook']);
 
 // this is for admin
 Route::group(['middleware' => ['auth:api', 'is_admin'], 'prefix' => 'admin'], function ($router) {
     Route::apiResource('packages', AdminPackageController::class);
     Route::apiResource('addons', AdminAddonController::class);
-    
+
     // dynamic pages
     Route::apiResource('dynamic-pages', DynamicPageController::class);
     // system settings
@@ -70,6 +90,15 @@ Route::group(['middleware' => ['auth:api', 'is_admin'], 'prefix' => 'admin'], fu
         Route::post('mail-settings', [SystemSettingController::class, 'updateMailSetting']);
         Route::get('clear-cache', [SystemSettingController::class, 'clearCache']);
     });
+
+    // support chats
+    Route::apiResource('support-chats', AdminSupportChatController::class)->except('update');
+    Route::post('support-chats/send-message', [AdminSupportChatController::class, 'sendMessage']);
+
+    // orders
+    Route::apiResource('orders', AdminOrderController::class)->except('update', 'store');
+    Route::post('orders/update-status/{id}', [AdminOrderController::class, 'updateStatus']);
+    Route::post('orders/file-upload/{id}', [AdminOrderController::class, 'fileUpload']);
 });
 
 // this is for public

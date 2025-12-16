@@ -11,20 +11,24 @@ class Payment extends Model
 
     protected $fillable = [
         'user_id',
-        'payable_id',
-        'payable_type',
-        'pay_at',
-        'intend_id',
+        'paymentable_id',
+        'paymentable_type',
+        'paid_at',
+        'intent_id',
+        'currency',
+        'failure_reason',
         'amount',
         'status',
     ];
 
     protected $casts = [
         'user_id' => 'integer',
-        'payable_id' => 'integer',
-        'payable_type' => 'string',
-        'pay_at' => 'datetime',
-        'intend_id' => 'string',
+        'paymentable_id' => 'integer',
+        'paymentable_type' => 'string',
+        'paid_at' => 'datetime',
+        'intent_id' => 'string',
+        'currency' => 'string',
+        'failure_reason' => 'string',
         'amount' => 'decimal:2',
         'status' => 'string',
         'created_at' => 'datetime',

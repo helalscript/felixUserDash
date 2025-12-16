@@ -14,11 +14,13 @@ return new class extends Migration
         Schema::create('payments', function (Blueprint $table) {
             $table->id();
             $table->foreignId('user_id')->nullable()->constrained()->onDelete('set null');
-            $table->morphs('payable'); // This creates payable_id and payable_type for polymorphic relationship
-            $table->timestamp('pay_at');
-            $table->string('intend_id')->nullable();
+            $table->morphs('paymentable'); // This creates paymentable_id and paymentable_type for polymorphic relationship
+            $table->timestamp('paid_at');
+            $table->string('intent_id')->nullable();
+            $table->string('currency', 3)->default('usd');
+            $table->text('failure_reason')->nullable();
             $table->decimal('amount', 10, 2);
-            $table->string('status')->default('pending'); //'pending', 'paid', 'failed', 'refunded'
+            $table->string('status')->default('pending'); // 'pending', 'paid', 'failed', 'refunded'
             $table->timestamps();
         });
     }

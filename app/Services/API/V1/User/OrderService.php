@@ -2,6 +2,7 @@
 
 namespace App\Services\API\V1\User;
 
+use App\Helpers\Helper;
 use App\Models\Addon;
 use App\Models\Order;
 use App\Models\OrderDetail;
@@ -96,6 +97,16 @@ class OrderService
                 'status' => 'pending',
             ]);
 
+            //file upload
+            if (isset($validatedData['attachment']) && !empty($validatedData['attachment'])) {
+                $validatedData['attachment'] = array_map(function ($attachment) {
+                    return Helper::fileUpload(
+                        $attachment,
+                        'order/details',
+                        'order_detail_'.time()
+                    );
+                }, $validatedData['attachment']);
+            }
             // Create order detail
             $orderDetail = OrderDetail::create([
                 'order_id' => $order->id,
@@ -103,7 +114,7 @@ class OrderService
                 'industry' => $validatedData['business_industry'],
                 'requirement' => $validatedData['business_requirement_description'],
                 'voice_preference' => $validatedData['voice_preference'],
-                'attachment' => $validatedData['attachment'],
+                'attachment' => $validatedData['attachment']??null,
                 'amount' => $price,
             ]);
             DB::commit();
@@ -125,7 +136,7 @@ class OrderService
     {
         try {
             $order = Order::where('user_id', $this->user->id)
-            ->with('orderable')
+            ->with('orderable','detail','payments','invoices','delivery')
             ->find($id);
             if (! $order) {
                 throw new Exception('Order not found');

@@ -25,6 +25,7 @@ class OrderController extends Controller
         try {
             $orders = $this->orderService->index($request);
 
+            // return Helper::jsonResponse(true, 'Orders fetched successfully', 200, $orders, true);
             return Helper::jsonResponse(true, 'Orders fetched successfully', 200, OrderResource::collection($orders), true);
         } catch (Exception $e) {
             Log::error('OrderController::index'.$e->getMessage());
@@ -47,7 +48,8 @@ class OrderController extends Controller
             'business_requirement_description' => 'nullable|string|max:10000',
             'voice_preference' => 'required|in:male,female,other',
             'attachment' => 'nullable|array',
-            'attachment.*' => 'nullable|file|mimes:pdf,doc,docx,xls,xlsx,ppt,pptx,jpg,jpeg,png,gif,svg,webp|max:20480',
+            'attachment.*' => 'nullable|file|mimes:pdf,doc,docx,xls,xlsx,ppt,pptx,jpg,jpeg,png,gif,svg,webp,mp4,mov,avi,wmv,flv,mkv,webm,mp3,wav,ogg,m4a,aac,flac,opus,mka,m4b,m4p,m4v,m4a,aac,flac,opus,mka,m4b,m4p,m4v|max:20480',
+            
         ]);
         try {
             $order = $this->orderService->store($validatedData);
@@ -68,7 +70,8 @@ class OrderController extends Controller
         try {
             $order = $this->orderService->show($id);
 
-            return Helper::jsonResponse(true, 'Order fetched successfully', 200, new OrderResource($order));
+            return Helper::jsonResponse(true, 'Order fetched successfully', 200, $order);
+            // return Helper::jsonResponse(true, 'Order fetched successfully', 200, new OrderResource($order));
         } catch (Exception $e) {
             Log::error('OrderController::show'.$e->getMessage());
 
