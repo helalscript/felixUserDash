@@ -17,6 +17,7 @@ use App\Http\Controllers\API\V1\User\AddonController as UserAddonController;
 use App\Http\Controllers\API\V1\User\NotificationController;
 use App\Http\Controllers\API\V1\User\OrderController as UserOrderController;
 use App\Http\Controllers\API\V1\User\PackageController as UserPackageController;
+use App\Http\Controllers\API\V1\User\PaymentController as UserPaymentController;
 use App\Http\Controllers\API\V1\User\SupportChatController as UserSupportChatController;
 use Illuminate\Support\Facades\Route;
 
@@ -61,7 +62,14 @@ Route::group(['middleware' => ['auth:api', 'is_user']], function ($router) {
     // Route::apiResource('support-chats', SupportChatController::class)->only(['index', 'store', 'show']);
     Route::get('support-chats/get-messages', [UserSupportChatController::class, 'getMessages']);
     Route::post('support-chats/send-message', [UserSupportChatController::class, 'sendMessage']);
+
+    // payments
+    Route::get('payments', [UserPaymentController::class, 'getAllPayment']);
+    Route::get('payments/single/{id}', [UserPaymentController::class, 'getSinglePayment']);
+    Route::post('payments/create-payment-intent', [UserPaymentController::class, 'createPaymentIntent']);
 });
+// this is for user payment webhook in public route
+Route::post('payments/stripe/handle-webhook', [UserPaymentController::class, 'handleWebhook']);
 
 // this is for admin
 Route::group(['middleware' => ['auth:api', 'is_admin'], 'prefix' => 'admin'], function ($router) {
@@ -84,7 +92,7 @@ Route::group(['middleware' => ['auth:api', 'is_admin'], 'prefix' => 'admin'], fu
     Route::post('support-chats/send-message', [AdminSupportChatController::class, 'sendMessage']);
 
     // orders
-    Route::apiResource('orders', AdminOrderController::class)->except('update','store');
+    Route::apiResource('orders', AdminOrderController::class)->except('update', 'store');
     Route::post('orders/update-status/{id}', [AdminOrderController::class, 'updateStatus']);
     Route::post('orders/file-upload/{id}', [AdminOrderController::class, 'fileUpload']);
 });

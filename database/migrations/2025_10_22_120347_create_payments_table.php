@@ -16,9 +16,11 @@ return new class extends Migration
             $table->foreignId('user_id')->nullable()->constrained()->onDelete('set null');
             $table->morphs('paymentable'); // This creates paymentable_id and paymentable_type for polymorphic relationship
             $table->timestamp('paid_at');
-            $table->string('intend_id')->nullable();
+            $table->string('intent_id')->nullable();
+            $table->string('currency', 3)->default('usd');
+            $table->text('failure_reason')->nullable();
             $table->decimal('amount', 10, 2);
-            $table->string('status')->default('pending'); //'pending', 'paid', 'failed', 'refunded'
+            $table->string('status')->default('pending'); // 'pending', 'paid', 'failed', 'refunded'
             $table->timestamps();
         });
     }
