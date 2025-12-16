@@ -21,6 +21,7 @@ class OrderResource extends JsonResource
             'start_date' => $this->start_date,
             'end_date' => $this->end_date,
             'amount' => $this->amount,
+            'payment_status' => $this->payment_status,
             'status' => $this->status,
             'orderable' => isset($this->orderable) ? new OrderableResource($this->orderable) : null,
         ];

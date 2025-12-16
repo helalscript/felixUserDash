@@ -22,6 +22,7 @@ return new class extends Migration
             $table->date('end_date')->nullable();
             $table->decimal('amount', 10, 2)->default(0);
             $table->enum('status', ['pending', 'in_progress', 'completed', 'cancelled'])->default('pending');
+            $table->string('payment_status')->default('pending')->nullable(); //pending, paid, failed, refunded
 
             $table->timestamps();
         });
