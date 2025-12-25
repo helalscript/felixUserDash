@@ -19,11 +19,13 @@ class OrderAddon extends Model
     protected $fillable = [
         'order_id',
         'addon_id',
+        'user_id',
         'name',
         'sub_title',
         'description',
-        'price',
+        'amount',
         'status',
+        'payment_status',
     ];
 
     /**
@@ -34,11 +36,13 @@ class OrderAddon extends Model
     protected $casts = [
         'order_id' => 'integer',
         'addon_id' => 'integer',
+        'user_id' => 'integer',
         'name' => 'string',
         'sub_title' => 'string',
         'description' => 'string',
-        'price' => 'decimal:2',
+        'amount' => 'decimal:2',
         'status' => 'string',
+        'payment_status' => 'string',
         'created_at' => 'datetime',
         'updated_at' => 'datetime',
     ];
@@ -51,6 +55,13 @@ class OrderAddon extends Model
     public function addon()
     {
         return $this->belongsTo(Addon::class);
+    }
+    public function payments() {
+        return $this->morphMany(Payment::class, 'paymentable');
+    }
+    
+    public function invoices() {
+        return $this->morphMany(Invoice::class, 'invoiceable');
     }
 }
 
