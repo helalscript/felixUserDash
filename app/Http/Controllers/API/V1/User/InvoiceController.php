@@ -22,7 +22,7 @@ class InvoiceController extends Controller
     {
         try {
             $invoices = $this->invoiceService->index($request);
-            return Helper::jsonResponse(true, 'Invoices fetched successfully', 200, $invoices);
+            return Helper::jsonResponse(true, 'Invoices fetched successfully', 200, $invoices, true);
         } catch (Exception $e) {
             Log::error('InvoiceController::index' . $e->getMessage());
             return Helper::jsonErrorResponse($e->getMessage(), 500);

@@ -4,6 +4,7 @@ namespace App\Services\API\V1\User;
 
 use App\Models\Invoice;
 use App\Models\Order;
+use App\Models\OrderAddon;
 use Exception;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
@@ -28,10 +29,12 @@ class InvoiceService
             $perPage = $request->per_page ?? 10;
             // this user orders ids
             $orders = Order::where('user_id', $this->user->id)->get()->pluck('id');
+            $orderAddons = OrderAddon::where('user_id', $this->user->id)->get()->pluck('id');
             if ($orders->isEmpty()) {
                 return [];
             }
-            $invoices = Invoice::whereIn('order_id', $orders)
+            $invoices = Invoice::whereIn('invoiceable_id', $orders)
+                ->whereIn('invoiceable_type', [Order::class, OrderAddon::class])
                 ->with(['order' => function ($q) {
                     $q->with('orderable', 'detail', 'payments', 'invoices', 'delivery');
                 }])
@@ -58,12 +61,15 @@ class InvoiceService
             if ($orders->isEmpty()) {
                 return [];
             }
-            $invoice = Invoice::
-            whereIn('order_id', $orders)
-                ->with(['order'=>function($q){
-                    $q->with('orderable','detail','payments','invoices','delivery');
-                }])
-                ->find($id);
+            $orderAddons = OrderAddon::where('user_id', $this->user->id)->get()->pluck('id');
+            if ($orderAddons->isEmpty()) {
+                return [];
+            }
+            $invoice = Invoice::where('invoiceable_id', $id)
+                ->where('invoiceable_type', Order::class)
+                ->orWhereIn('invoiceable_id', $orderAddons)
+                ->where('invoiceable_type', OrderAddon::class)
+                ->first();
             if (! $invoice) {
                 throw new Exception('Invoice not found');
             }

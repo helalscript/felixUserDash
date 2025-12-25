@@ -3,6 +3,7 @@
 namespace App\Services\API\V1\User;
 
 use App\Models\Order;
+use App\Models\OrderAddon;
 use App\Models\Payment;
 use Exception;
 use Illuminate\Support\Facades\Auth;
@@ -65,8 +66,13 @@ class PaymentService
         }
     }
 
+
     /**
-     * Create payment intent
+     * Create a payment intent via Stripe.
+     * 
+     * @param array $validatedData
+     * @return string
+     * @throws Exception
      */
     public function createPaymentIntent(array $validatedData)
     {
@@ -75,16 +81,25 @@ class PaymentService
             if (!$user) {
                 throw new Exception('User not authenticated');
             }
-
-            // Validate order exists
-            if (!isset($validatedData['order_id'])) {
-                throw new Exception('Order ID is required');
+            $order = null;
+            // Validate order addon exists or order exists and get amount
+            if (isset($validatedData['order_addon_id'])) {
+                // Get order amount and validate
+                $order = $this->getAmount($validatedData['order_addon_id'], 'addon', $user->id);
+                $amount = $order->amount;
+            } else {
+                // Validate order exists
+                if (!isset($validatedData['order_id'])) {
+                    throw new Exception('Order ID is required');
+                }
+                // Get order amount and validate
+                $order = $this->getAmount(isset($validatedData['order_id']) ? $validatedData['order_id'] : null, 'order', $user->id);
+                $amount = $order->amount;
             }
 
-            // Get order amount and validate
-            $amount = $this->getAmount($validatedData['order_id'], $user->id);
             $validatedData['amount'] = $amount;
             $validatedData['user_id'] = $user->id;
+
 
             // Check if payment method is supported
             if ($validatedData['payment_method'] !== 'stripe') {
@@ -92,7 +107,7 @@ class PaymentService
             }
 
             // Create payment intent via Stripe
-            $clientSecret = $this->stripeService->stripePaymentIntent($validatedData);
+            $clientSecret = $this->stripeService->stripePaymentUrl($validatedData, isset($validatedData['order_addon_id']) ? 'addon' : 'order',$order);
 
             return $clientSecret;
         } catch (Exception $e) {
@@ -109,7 +124,7 @@ class PaymentService
     {
         try {
             $result = $this->stripeService->stripeHandleWebhook($request);
-            
+
             return $result;
         } catch (Exception $e) {
             Log::error('PaymentService::handleWebhook: ' . $e->getMessage());
@@ -121,15 +136,21 @@ class PaymentService
      * Get the amount of the order and validate
      *
      * @param int $orderId
-     * @param int $userId
-     * @return float
+        * @param int $userId
      */
-    private function getAmount(int $orderId, int $userId): float
+    private function getAmount(int $orderId, string $type, int $userId)
     {
         try {
-            $order = Order::where('user_id', $userId)
-                ->with(['orderable', 'payments'])
-                ->find($orderId);
+            // Fetch order based on type
+            if ($type === 'addon') {
+                $order = OrderAddon::where('user_id', $userId)
+                    ->with(['addon', 'order', 'payments'])
+                    ->find($orderId);
+            } else {
+                $order = Order::where('user_id', $userId)
+                    ->with(['orderable', 'payments'])
+                    ->find($orderId);
+            }
 
             // Check if order exists
             if (!$order) {
@@ -149,8 +170,8 @@ class PaymentService
             if (!$order->amount || $order->amount <= 0) {
                 throw new Exception('Invalid order amount');
             }
-
-            return (float) $order->amount;
+            
+            return $order;
         } catch (Exception $e) {
             Log::error('PaymentService::getAmount: ' . $e->getMessage());
             throw $e;
