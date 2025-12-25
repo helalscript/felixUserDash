@@ -35,7 +35,9 @@ class OrderService
             $dateTo = $request->date_to ?? null;
             
             $query = Order::where('user_id', $this->user->id)
-                ->with(['orderable', 'detail']);
+                ->with(['orderable', 'detail'])
+                ->withCount('addons');
+                
             
             // Apply search if provided
             if ($search) {
@@ -137,6 +139,7 @@ class OrderService
         try {
             $order = Order::where('user_id', $this->user->id)
             ->with('orderable','detail','payments','invoices','addons','delivery')
+            ->withCount('addons')
             ->find($id);
             if (! $order) {
                 throw new Exception('Order not found');

@@ -23,6 +23,7 @@ class OrderResource extends JsonResource
             'amount' => $this->amount,
             'payment_status' => $this->payment_status,
             'status' => $this->status,
+            'addons_count' => $this->addons_count,
             'orderable' => isset($this->orderable) ? new OrderableResource($this->orderable) : null,
             'detail' => isset($this->detail) ? new OrderDetailResource($this->detail) : null,
         ];
