@@ -57,14 +57,17 @@ class PaymentController extends Controller
     public function createPaymentIntent(Request $request)
     {
         $validatedData = $request->validate([
+            'success_url' => 'required|url',
+            'cancel_url' => 'required|url',
             'payment_method' => 'required|in:stripe', //in future we will add other payment methods like paypal, bank transfer, etc.
-            'order_id' => 'required|integer|exists:orders,id',
+            'order_id' => 'required_without:order_addon_id|integer|exists:orders,id',
+            'order_addon_id' => 'required_without:order_id|integer|exists:order_addons,id',
         ]);
 
         try {
             $clientSecret = $this->paymentService->createPaymentIntent($validatedData);
 
-            return Helper::jsonResponse(true,'Payment intent created successfully',200,['client_secret' => $clientSecret]);
+            return Helper::jsonResponse(true,'Payment session created successfully',200,['client_secret' => $clientSecret]);
         } catch (Exception $e) {
             Log::error('PaymentController::createPaymentIntent: '.$e->getMessage());
 

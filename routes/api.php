@@ -16,6 +16,7 @@ use App\Http\Controllers\API\V1\Public\GeneralSettingController;
 use App\Http\Controllers\API\V1\User\AddonController as UserAddonController;
 use App\Http\Controllers\API\V1\User\InvoiceController as UserInvoiceController;
 use App\Http\Controllers\API\V1\User\NotificationController;
+use App\Http\Controllers\API\V1\User\OrderAddonController as UserOrderAddonController;
 use App\Http\Controllers\API\V1\User\OrderController as UserOrderController;
 use App\Http\Controllers\API\V1\User\PackageController as UserPackageController;
 use App\Http\Controllers\API\V1\User\PaymentController as UserPaymentController;
@@ -53,6 +54,8 @@ Route::group(['middleware' => ['auth:api', 'is_user']], function ($router) {
 
     // orders
     Route::apiResource('orders', UserOrderController::class)->only(['index', 'store', 'show']);
+    // order addons
+    Route::apiResource('order-addons', UserOrderAddonController::class)->only(['index', 'store', 'show']);
 
     // notifications
     Route::apiResource('notifications', NotificationController::class)->only(['index', 'show']);

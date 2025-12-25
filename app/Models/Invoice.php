@@ -10,7 +10,8 @@ class Invoice extends Model
     use HasFactory;
 
     protected $fillable = [
-        'order_id',
+        'invoiceable_id',
+        'invoiceable_type',
         'invoice_number',
         'start_date',
         'end_date',
@@ -19,7 +20,8 @@ class Invoice extends Model
     ];
 
     protected $casts = [
-        'order_id' => 'integer',
+        'invoiceable_id' => 'integer',
+        'invoiceable_type' => 'string',
         'invoice_number' => 'string',
         'start_date' => 'date:Y-m-d',
         'end_date' => 'date:Y-m-d',
