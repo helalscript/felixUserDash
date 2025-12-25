@@ -136,7 +136,7 @@ class OrderService
     {
         try {
             $order = Order::where('user_id', $this->user->id)
-            ->with('orderable','detail','payments','invoices','delivery')
+            ->with('orderable','detail','payments','invoices','addons','delivery')
             ->find($id);
             if (! $order) {
                 throw new Exception('Order not found');
@@ -197,4 +197,5 @@ class OrderService
         }
         throw new Exception('Invalid type');
     }
+
 }

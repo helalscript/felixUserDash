@@ -4,8 +4,7 @@ use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
-return new class extends Migration
-{
+return new class extends Migration {
     /**
      * Run the migrations.
      */
@@ -14,10 +13,8 @@ return new class extends Migration
         Schema::create('invoices', function (Blueprint $table) {
             $table->id();
 
-            $table->foreignId('order_id')
-                ->constrained('orders')
-                ->cascadeOnDelete();
-
+            // $table->foreignId('order_id')->constrained('orders')->cascadeOnDelete();
+            $table->morphs('invoiceable'); // invoiceable_id + invoiceable_type (Order | OrderAddon)
             $table->string('invoice_number')->unique();
             $table->date('start_date')->nullable();
             $table->date('end_date')->nullable();
