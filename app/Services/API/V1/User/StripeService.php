@@ -223,8 +223,8 @@ class StripeService
         try {
             // ✅ Metadata directly from session
             $orderType = $session->metadata->order_type ?? null;
-            $orderId   = $session->metadata->order_id ?? null;
-            $userId    = $session->metadata->user_id ?? null;
+            $orderId = $session->metadata->order_id ?? null;
+            $userId = $session->metadata->user_id ?? null;
 
             if (! $orderType || ! $orderId || ! $userId) {
                 throw new Exception('Required metadata missing');
@@ -257,14 +257,14 @@ class StripeService
 
             // Save payment
             Payment::create([
-                'intent_id'        => $paymentIntentId,
-                'user_id'          => $userId,
-                'paymentable_id'   => $orderId,
+                'intent_id' => $paymentIntentId,
+                'user_id' => $userId,
+                'paymentable_id' => $orderId,
                 'paymentable_type' => $modelClass,
-                'paid_at'          => now(),
-                'amount'           => $session->amount_total / 100,
-                'currency'         => $session->currency,
-                'status'           => 'paid',
+                'paid_at' => now(),
+                'amount' => $session->amount_total / 100,
+                'currency' => $session->currency,
+                'status' => 'paid',
             ]);
 
             // Update order
@@ -362,7 +362,6 @@ class StripeService
     {
         try {
             $session = $this->stripe->checkout->sessions->create([
-                'payment_method_types' => ['card'],
                 'mode' => 'payment',
 
                 'line_items' => [[
@@ -380,11 +379,15 @@ class StripeService
                 'metadata' => [
                     'user_id' => $validatedData['user_id'] ?? auth()->id(),
                     'order_id' => isset($validatedData['order_id']) ? $validatedData['order_id'] : $validatedData['order_addon_id'],
-                    'order_type' => $orderType,
+                    'order_type' => $orderType=='addon' ? 'Order Addon' : 'Order Package',
                 ],
                 // if success ans cancel url
                 'success_url' => $validatedData['success_url'],
                 'cancel_url' => $validatedData['cancel_url'],
+                // Automatic payment methods enable korar jonno
+                'automatic_payment_methods' => [
+                    'enabled' => true,
+                ],
             ]);
 
             // THIS IS THE PAYMENT URL
