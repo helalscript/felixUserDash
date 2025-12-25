@@ -4,6 +4,7 @@ namespace App\Services\API\V1\User;
 
 use App\Models\Invoice;
 use App\Models\Order;
+use App\Models\OrderAddon;
 use App\Models\Payment;
 use Exception;
 use Illuminate\Support\Facades\DB;
@@ -22,35 +23,39 @@ class StripeService
         $this->stripe = new StripeClient(config('services.stripe.secret_key'));
     }
 
-    /**
-     * Create a payment intent.
-     *
-     * @return string
-     */
-    public function stripePaymentIntent(array $validatedData)
-    {
-        try {
-            $paymentIntent = $this->stripe->paymentIntents->create([
-                'amount' => intval($validatedData['amount'] * 100),
-                'currency' => 'usd',
-                'automatic_payment_methods' => [
-                    'enabled' => true,
-                ],
-                'metadata' => [
-                    'user_id' => $validatedData['user_id'] ?? auth()->id(),
-                    'order_id' => $validatedData['order_id'],
-                ],
-            ]);
+    // /**
+    //  * Create a Stripe payment intent.
+    //  *
+    //  * @param  array  $validatedData
+    //  * @param  string  $orderType
+    //  * @return string  Client secret of the payment intent
+    //  * @throws Exception
+    //  */
+    // public function stripePaymentIntent(array $validatedData, string $orderType)
+    // {
+    //     try {
+    //         $paymentIntent = $this->stripe->paymentIntents->create([
+    //             'amount' => intval($validatedData['amount'] * 100),
+    //             'currency' => 'usd',
+    //             'automatic_payment_methods' => [
+    //                 'enabled' => true,
+    //             ],
+    //             'metadata' => [
+    //                 'user_id' => $validatedData['user_id'] ?? auth()->id(),
+    //                 'order_id' => $validatedData['order_id'],
+    //                 'order_type' => $orderType,
+    //             ],
+    //         ]);
 
-            return $paymentIntent->client_secret;
-        } catch (ApiErrorException $e) {
-            Log::error('StripeService::stripePaymentIntent Stripe API error: '.$e->getMessage());
-            throw new Exception('Stripe API error: '.$e->getMessage());
-        } catch (Exception $e) {
-            Log::error('StripeService::stripePaymentIntent: '.$e->getMessage());
-            throw $e;
-        }
-    }
+    //         return $paymentIntent->client_secret;
+    //     } catch (ApiErrorException $e) {
+    //         Log::error('StripeService::stripePaymentIntent Stripe API error: ' . $e->getMessage());
+    //         throw new Exception('Stripe API error: ' . $e->getMessage());
+    //     } catch (Exception $e) {
+    //         Log::error('StripeService::stripePaymentIntent: ' . $e->getMessage());
+    //         throw $e;
+    //     }
+    // }
 
     /**
      * Handle Stripe webhook.
@@ -63,8 +68,8 @@ class StripeService
         try {
             Log::info('StripeService::stripeHandleWebhook Event 21: ');
 
-            $payload        = $request->getContent();
-            $sigHeader      = $request->header('Stripe-Signature');
+            $payload = $request->getContent();
+            $sigHeader = $request->header('Stripe-Signature');
             $endpointSecret = config('services.stripe.webhook_secret');
             // Verify webhook signature
             $event = Webhook::constructEvent($payload, $sigHeader, $endpointSecret);
@@ -72,11 +77,17 @@ class StripeService
             // Handle different event types
             switch ($event->type) {
                 case 'payment_intent.succeeded':
+                    Log::info('StripeService::stripeHandleWebhook Payment intent succeeded: '.$event->data->object->id);
                     $this->handlePaymentSuccess($event->data->object);
 
                     return true;
+                case 'checkout.session.completed':
+                    Log::info('StripeService::stripeHandleWebhook Checkout session completed: '.$event->data->object->id);
+                    $this->handleCheckoutSessionCompleted($event->data->object);
 
+                    return true;
                 case 'payment_intent.payment_failed':
+                    Log::info('StripeService::stripeHandleWebhook Payment intent failed: '.$event->data->object->id);
                     $this->handlePaymentFailure($event->data->object);
 
                     return true;
@@ -118,11 +129,11 @@ class StripeService
             }
 
             // Record successful payment
-            $payment = Payment::create([
+            Payment::create([
                 'intent_id' => $paymentIntent->id,
                 'user_id' => $paymentIntent->metadata->user_id,
                 'paymentable_id' => $paymentIntent->metadata->order_id,
-                'paymentable_type' => Order::class,
+                'paymentable_type' => $paymentIntent->metadata->order_type === 'addon' ? OrderAddon::class : Order::class,
                 'paid_at' => now(),
                 'amount' => $paymentIntent->amount / 100,
                 'currency' => $paymentIntent->currency,
@@ -138,6 +149,7 @@ class StripeService
             // Create invoice
             $this->createInvoice(
                 $paymentIntent->metadata->order_id,
+                $paymentIntent->metadata->order_type,
                 $paymentIntent->amount / 100,
                 'paid'
             );
@@ -171,11 +183,11 @@ class StripeService
             }
 
             // Record failed payment
-            $payment = Payment::create([
+            Payment::create([
                 'intent_id' => $paymentIntent->id,
                 'user_id' => $paymentIntent->metadata->user_id,
                 'paymentable_id' => $paymentIntent->metadata->order_id,
-                'paymentable_type' => Order::class,
+                'paymentable_type' => $paymentIntent->metadata->order_type === 'order' ? Order::class : OrderAddon::class,
                 'amount' => $paymentIntent->amount / 100,
                 'currency' => $paymentIntent->currency,
                 'status' => 'failed',
@@ -198,24 +210,120 @@ class StripeService
     }
 
     /**
+     * Handle checkout.session.completed event
+     *
+     * @param  \Stripe\Checkout\Session  $session
+     *
+     * @throws \Exception
+     */
+    protected function handleCheckoutSessionCompleted($session): void
+    {
+        DB::beginTransaction();
+
+        try {
+            // ✅ Metadata directly from session
+            $orderType = $session->metadata->order_type ?? null;
+            $orderId   = $session->metadata->order_id ?? null;
+            $userId    = $session->metadata->user_id ?? null;
+
+            if (! $orderType || ! $orderId || ! $userId) {
+                throw new Exception('Required metadata missing');
+            }
+
+            // PaymentIntent ID
+            $paymentIntentId = $session->payment_intent;
+
+            if (! $paymentIntentId) {
+                throw new Exception('PaymentIntent ID missing');
+            }
+
+            // Prevent duplicate webhook
+            if (Payment::where('intent_id', $paymentIntentId)->exists()) {
+                Log::info('Checkout already processed: '.$paymentIntentId);
+                DB::rollBack();
+
+                return;
+            }
+
+            // Resolve model
+            $modelClass = $orderType === 'addon'
+                ? OrderAddon::class
+                : Order::class;
+
+            $order = $modelClass::find($orderId);
+            if (! $order) {
+                throw new Exception('Order not found');
+            }
+
+            // Save payment
+            Payment::create([
+                'intent_id'        => $paymentIntentId,
+                'user_id'          => $userId,
+                'paymentable_id'   => $orderId,
+                'paymentable_type' => $modelClass,
+                'paid_at'          => now(),
+                'amount'           => $session->amount_total / 100,
+                'currency'         => $session->currency,
+                'status'           => 'paid',
+            ]);
+
+            // Update order
+            $order->update([
+                'payment_status' => 'paid',
+            ]);
+
+            // Create invoice
+            $this->createInvoice(
+                $orderId,
+                $orderType,
+                $session->amount_total / 100,
+                'paid'
+            );
+
+            DB::commit();
+
+            Log::info('Checkout session processed', [
+                'order_id' => $orderId,
+                'order_type' => $orderType,
+            ]);
+
+        } catch (Exception $e) {
+            DB::rollBack();
+            Log::error('handleCheckoutSessionCompleted failed: '.$e->getMessage());
+            throw $e;
+        }
+    }
+
+    /**
      * Create an invoice for an order.
      *
      * @param  int  $orderId
      * @param  float  $amount
      * @param  string  $status
+     * @param  string  $orderType
      * @return \App\Models\Invoice
      */
-    public function createInvoice($orderId, $amount, $status = 'paid')
+    public function createInvoice($orderId, $orderType, $amount, $status = 'paid')
     {
         try {
-            $order = Order::find($orderId);
-            if (! $order) {
-                Log::error('StripeService::createInvoice Order not found, ID: '.$orderId);
-                throw new Exception('Order not found');
+            if ($orderType === 'addon') {
+                $order = OrderAddon::find($orderId);
+                if (! $order) {
+                    Log::error('StripeService::createInvoice Order addon not found, ID: '.$orderId);
+                    // throw new Exception('Order addon not found');
+                }
+            } else {
+                $order = Order::find($orderId);
+                if (! $order) {
+                    Log::error('StripeService::createInvoice Order not found, ID: '.$orderId);
+                    // throw new Exception('Order not found');
+                }
             }
 
             // Check if invoice already exists
-            $existingInvoice = Invoice::where('order_id', $orderId)->first();
+            $existingInvoice = Invoice::where('invoiceable_id', $order->id)
+                ->where('invoiceable_type', $orderType === 'addon' ? OrderAddon::class : Order::class)
+                ->first();
             if ($existingInvoice) {
                 Log::info('Invoice already exists for order: '.$orderId);
 
@@ -223,7 +331,8 @@ class StripeService
             }
 
             $invoice = Invoice::create([
-                'order_id' => $order->id,
+                'invoiceable_id' => $order->id,
+                'invoiceable_type' => $orderType === 'addon' ? OrderAddon::class : Order::class,
                 'invoice_number' => $this->generateInvoiceNumber(),
                 'issued_at' => now(),
                 'amount' => $amount,
@@ -247,5 +356,43 @@ class StripeService
         $random = str_pad(rand(0, 9999), 4, '0', STR_PAD_LEFT);
 
         return "{$prefix}-{$date}-{$random}";
+    }
+
+    public function stripePaymentUrl(array $validatedData, string $orderType, $order)
+    {
+        try {
+            $session = $this->stripe->checkout->sessions->create([
+                'payment_method_types' => ['card'],
+                'mode' => 'payment',
+
+                'line_items' => [[
+                    'price_data' => [
+                        'currency' => 'usd',
+                        'product_data' => [
+                            'name' => 'Order Payment',
+                            'description' => 'Order Type: '.$orderType,
+                        ],
+                        'unit_amount' => intval($validatedData['amount'] * 100),
+                    ],
+                    'quantity' => 1,
+                ]],
+
+                'metadata' => [
+                    'user_id' => $validatedData['user_id'] ?? auth()->id(),
+                    'order_id' => isset($validatedData['order_id']) ? $validatedData['order_id'] : $validatedData['order_addon_id'],
+                    'order_type' => $orderType,
+                ],
+                // if success ans cancel url
+                'success_url' => $validatedData['success_url'],
+                'cancel_url' => $validatedData['cancel_url'],
+            ]);
+
+            // THIS IS THE PAYMENT URL
+            return $session->url;
+
+        } catch (ApiErrorException $e) {
+            Log::error('Stripe Checkout error: '.$e->getMessage());
+            throw new Exception('Stripe error: '.$e->getMessage());
+        }
     }
 }
