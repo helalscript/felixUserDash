@@ -223,8 +223,8 @@ class StripeService
         try {
             // ✅ Metadata directly from session
             $orderType = $session->metadata->order_type ?? null;
-            $orderId   = $session->metadata->order_id ?? null;
-            $userId    = $session->metadata->user_id ?? null;
+            $orderId = $session->metadata->order_id ?? null;
+            $userId = $session->metadata->user_id ?? null;
 
             if (! $orderType || ! $orderId || ! $userId) {
                 throw new Exception('Required metadata missing');
@@ -257,14 +257,14 @@ class StripeService
 
             // Save payment
             Payment::create([
-                'intent_id'        => $paymentIntentId,
-                'user_id'          => $userId,
-                'paymentable_id'   => $orderId,
+                'intent_id' => $paymentIntentId,
+                'user_id' => $userId,
+                'paymentable_id' => $orderId,
                 'paymentable_type' => $modelClass,
-                'paid_at'          => now(),
-                'amount'           => $session->amount_total / 100,
-                'currency'         => $session->currency,
-                'status'           => 'paid',
+                'paid_at' => now(),
+                'amount' => $session->amount_total / 100,
+                'currency' => $session->currency,
+                'status' => 'paid',
             ]);
 
             // Update order
@@ -362,7 +362,8 @@ class StripeService
     {
         try {
             $session = $this->stripe->checkout->sessions->create([
-                'payment_method_types' => ['card'],
+                'payment_method_types' => ['card','link'],
+
                 'mode' => 'payment',
 
                 'line_items' => [[

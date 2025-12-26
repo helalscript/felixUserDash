@@ -47,7 +47,7 @@ class SystemSettingService
         try {
             $setting = SystemSetting::firstOrNew();
 
-            foreach (['favicon', 'logo','footer_logo'] as $field) {
+            foreach (['favicon', 'logo', 'footer_logo'] as $field) {
                 if (isset($validatedData[$field]) && $validatedData[$field]) {
                     // Get relative path if the model accessor returns full URL
                     $oldPath = $setting->$field
@@ -86,12 +86,12 @@ class SystemSettingService
     {
         try {
             $settings = [
-                'mail_mailer' => env('MAIL_MAILER', ''),
-                'mail_host' => env('MAIL_HOST', ''),
-                'mail_port' => env('MAIL_PORT', ''),
-                'mail_username' => env('MAIL_USERNAME', ''),
-                'mail_password' => env('MAIL_PASSWORD', ''),
-                'mail_encryption' => env('MAIL_ENCRYPTION', ''),
+                'mail_mailer'       => env('MAIL_MAILER', ''),
+                'mail_host'         => env('MAIL_HOST', ''),
+                'mail_port'         => env('MAIL_PORT', ''),
+                'mail_username'     => env('MAIL_USERNAME', ''),
+                'mail_password'     => env('MAIL_PASSWORD', ''),
+                'mail_encryption'   => env('MAIL_ENCRYPTION', ''),
                 'mail_from_address' => env('MAIL_FROM_ADDRESS', ''),
             ];
 
@@ -162,16 +162,88 @@ class SystemSettingService
     public function clearCache()
     {
         try {
-            Artisan::call('cache:clear');
-            Artisan::call('config:clear');
-            Artisan::call('route:clear');
-            Artisan::call('view:clear');
-            Artisan::call('optimize:clear');
-            Artisan::call('optimize');
+            Artisan :: call('cache:clear');
+            Artisan :: call('config:clear');
+            Artisan :: call('route:clear');
+            Artisan :: call('view:clear');
+            Artisan :: call('optimize:clear');
 
             return true;
         } catch (Exception $e) {
             Log::error('SystemSettingService::clearCache'.$e->getMessage());
+            throw $e;
+        }
+    }
+
+    public function getStripeSetting()
+    {
+        try {
+            $stripeSettings = [
+                'stripe_public_key'     => env('STRIPE_PUBLIC_KEY', ''),
+                'stripe_secret_key'     => env('STRIPE_SECRET_KEY', ''),
+                'stripe_webhook_secret' => env('STRIPE_WEBHOOK_SECRET', ''),
+            ];
+
+            return $stripeSettings;
+
+        } catch (Exception $e) {
+            Log::error('SystemSettingService::getStripeSetting'.$e->getMessage());
+            throw $e;
+        }
+    }
+
+    public function updateStripeSetting(array $validatedData)
+    {
+        try {
+            $envPath = base_path('.env');
+
+            if (! File::exists($envPath)) {
+                throw new Exception('.env file not found.');
+            }
+
+            $envContent = File::get($envPath);
+            $lineBreak = PHP_EOL;
+
+            $stripeKeys = [
+                'stripe_public_key'     => 'STRIPE_PUBLIC_KEY',
+                'stripe_secret_key'     => 'STRIPE_SECRET_KEY',
+                'stripe_webhook_secret' => 'STRIPE_WEBHOOK_SECRET',
+            ];
+
+            foreach ($stripeKeys as $key => $envKey) {
+
+                // New value or keep old
+                if (array_key_exists($key, $validatedData)) {
+                    $value = $validatedData[$key];
+                } else {
+                    preg_match("/^{$envKey}=(.*)$/m", $envContent, $matches);
+                    $value = $matches[1] ?? '';
+                }
+
+                // Remove existing quotes
+                $value = trim($value, '"');
+
+                // Always wrap Stripe keys in quotes
+                $value = "\"{$value}\"";
+
+                // Update or append
+                if (preg_match("/^{$envKey}=.*/m", $envContent)) {
+                    $envContent = preg_replace(
+                        "/^{$envKey}=.*/m",
+                        "{$envKey}={$value}",
+                        $envContent
+                    );
+                } else {
+                    $envContent .= "{$lineBreak}{$envKey}={$value}";
+                }
+            }
+
+            File::put($envPath, $envContent);
+            $this->clearCache();
+            return true;
+
+        } catch (Exception $e) {
+            Log::error('SystemSettingService::updateStripeSetting - '.$e->getMessage());
             throw $e;
         }
     }

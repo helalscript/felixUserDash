@@ -79,7 +79,7 @@ Route::group(['middleware' => ['auth:api', 'is_user']], function ($router) {
 Route::post('payments/stripe/handle-webhook', [UserPaymentController::class, 'handleWebhook']);
 
 // this is for admin
-Route::group(['middleware' => ['auth:api', 'is_admin'], 'prefix' => 'admin'], function ($router) {
+Route::group(['middleware' => ['auth:api', 'is_admin'], 'prefix' => 'admin','as' => 'admin.'], function ($router) {
     Route::apiResource('packages', AdminPackageController::class);
     Route::apiResource('addons', AdminAddonController::class);
 
@@ -92,6 +92,8 @@ Route::group(['middleware' => ['auth:api', 'is_admin'], 'prefix' => 'admin'], fu
         Route::get('mail-settings', [SystemSettingController::class, 'getMailSetting']);
         Route::post('mail-settings', [SystemSettingController::class, 'updateMailSetting']);
         Route::get('clear-cache', [SystemSettingController::class, 'clearCache']);
+        Route::get('stripe-settings', [SystemSettingController::class, 'getStripeSetting']);
+        Route::post('stripe-settings', [SystemSettingController::class, 'updateStripeSetting']);
     });
 
     // support chats
