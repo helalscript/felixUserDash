@@ -105,4 +105,31 @@ class SystemSettingController extends Controller
             return Helper::jsonErrorResponse($e->getMessage(), 500);
         }
     }
+
+    public function getStripeSetting()
+    {
+        try {
+            $stripeSettings = $this->systemSettingService->getStripeSetting();
+            return Helper::jsonResponse(true, 'Stripe settings fetched successfully', 200, $stripeSettings);
+        } catch (Exception $e) {
+            Log::error('SystemSettingController::getStripeSetting'.$e->getMessage());
+            return Helper::jsonErrorResponse($e->getMessage(), 500);
+        }
+    }
+
+    public function updateStripeSetting(Request $request)
+    {
+        $validatedData = $request->validate([
+            'stripe_public_key' => 'nullable|string',
+            'stripe_secret_key' => 'nullable|string',
+            'stripe_webhook_secret' => 'nullable|string',
+        ]);
+        try {
+            $stripeSettings = $this->systemSettingService->updateStripeSetting($validatedData);
+            return Helper::jsonResponse(true, 'Stripe settings updated successfully', 200);
+        } catch (Exception $e) {
+            Log::error('SystemSettingController::updateStripeSetting'.$e->getMessage());
+            return Helper::jsonErrorResponse($e->getMessage(), 500);
+        }
+    }
 }
