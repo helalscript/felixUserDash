@@ -34,7 +34,7 @@ class OrderService
             $dateTo = $request->date_to ?? null;
 
             $query = Order::query()
-                ->with('orderable', 'detail', 'user:id,name,email,phone,avatar', 'invoices', 'payments', 'delivery')
+                ->with('orderable', 'detail', 'user:id,name,email,phone,avatar', 'invoices', 'payments', 'delivery','addons')
                 ->when($search, function ($query) use ($search) {
                     $query->where('order_number', 'like', '%'.$search.'%')
                         ->orWhereHas('orderable', function ($orderableQuery) use ($search) {
@@ -70,7 +70,7 @@ class OrderService
     public function show(int $id)
     {
         try {
-            $order = Order::with(['orderable', 'detail', 'user:id,name,email,phone,avatar', 'invoices', 'payments', 'delivery'])->find($id);
+            $order = Order::with(['orderable', 'detail', 'user:id,name,email,phone,avatar', 'invoices', 'payments', 'delivery','addons'])->find($id);
             if (! $order) {
                 throw new Exception('Order not found');
             }
