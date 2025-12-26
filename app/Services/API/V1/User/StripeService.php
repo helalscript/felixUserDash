@@ -362,6 +362,8 @@ class StripeService
     {
         try {
             $session = $this->stripe->checkout->sessions->create([
+                'payment_method_types' => ['card','link'],
+
                 'mode' => 'payment',
 
                 'line_items' => [[
@@ -379,15 +381,11 @@ class StripeService
                 'metadata' => [
                     'user_id' => $validatedData['user_id'] ?? auth()->id(),
                     'order_id' => isset($validatedData['order_id']) ? $validatedData['order_id'] : $validatedData['order_addon_id'],
-                    'order_type' => $orderType=='addon' ? 'Order Addon' : 'Order Package',
+                    'order_type' => $orderType,
                 ],
                 // if success ans cancel url
                 'success_url' => $validatedData['success_url'],
                 'cancel_url' => $validatedData['cancel_url'],
-                // Automatic payment methods enable korar jonno
-                'automatic_payment_methods' => [
-                    'enabled' => true,
-                ],
             ]);
 
             // THIS IS THE PAYMENT URL
