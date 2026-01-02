@@ -105,7 +105,7 @@ class OrderService
                     return Helper::fileUpload(
                         $attachment,
                         'order/details',
-                        'order_detail_'.time()
+                        time().'.'.$attachment->getClientOriginalName()
                     );
                 }, $validatedData['attachment']);
             }
@@ -176,7 +176,7 @@ class OrderService
                     return Helper::fileUpload(
                         $attachment,
                         'order/details',
-                        'order_detail_'.time()
+                        time().'.'.$attachment->getClientOriginalName()
                     );
                 }, $validatedData['attachment']);
             }
