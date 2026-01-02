@@ -20,9 +20,10 @@ class OrderDetailResource extends JsonResource
             'order_id' => $this->order_id,
             'name' => $this->name,
             'industry' => $this->industry,
-            'requirement_description' => $this->requirement_description,
+            'requirement_description' => $this->requirement,
             'voice_preference' => $this->voice_preference,
-            'attachments' => $this->attachments,
+            'attachments' => $this->attachment,
+            'is_filled_by_user' => $this->is_filled_by_user,
             'created_at' => $this->created_at,
             'updated_at' => $this->updated_at,
         ];

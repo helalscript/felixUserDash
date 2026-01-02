@@ -53,7 +53,7 @@ Route::group(['middleware' => ['auth:api', 'is_user']], function ($router) {
     Route::apiResource('addons', UserAddonController::class)->only(['index', 'show']);
 
     // orders
-    Route::apiResource('orders', UserOrderController::class)->only(['index', 'store', 'show']);
+    Route::apiResource('orders', UserOrderController::class)->only(['index', 'store', 'show', 'update']);
     // order addons
     Route::apiResource('order-addons', UserOrderAddonController::class)->only(['index', 'store', 'show']);
 
