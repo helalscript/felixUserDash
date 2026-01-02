@@ -10,7 +10,7 @@
         
         <!-- Body Section -->
         <p style="font-size: 1em; color: #555555; margin-top: 10px;">
-            Thank you for choosing <strong>{{ config('app.name') }}</strong>. Use the following OTP to complete your sign-up process. The OTP is valid for <strong>1 hour</strong>.
+            Thank you for choosing <strong>{{ config('app.name') }}</strong>. Use the following OTP to complete your process. The OTP is valid for <strong>1 hour</strong>.
         </p>
         
         <!-- OTP Section -->
