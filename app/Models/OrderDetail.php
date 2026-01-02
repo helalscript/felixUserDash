@@ -20,6 +20,7 @@ class OrderDetail extends Model
         'attachment',
         'amount',
         'status',
+        'is_filled_by_user',
     ];
 
     protected $casts = [
@@ -31,6 +32,7 @@ class OrderDetail extends Model
         'attachment' => 'array',
         'amount' => 'decimal:2',
         'status' => 'string',
+        'is_filled_by_user' => 'boolean',
         'created_at' => 'datetime',
         'updated_at' => 'datetime',
     ];

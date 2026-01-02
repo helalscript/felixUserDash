@@ -18,13 +18,14 @@ return new class extends Migration
                 ->constrained('orders')
                 ->cascadeOnDelete();
 
-            $table->string('name');
+            $table->string('name')->nullable();
             $table->string('industry')->nullable();
             $table->longText('requirement')->nullable();
-            $table->enum('voice_preference', ['male', 'female'])->nullable();
+            $table->enum('voice_preference', ['male', 'female','other'])->nullable();
             $table->json('attachment')->nullable();
             $table->decimal('amount', 10, 2)->default(0);
             $table->enum('status', ['pending', 'in_progress', 'completed', 'cancelled'])->default('pending');
+            $table->boolean(column: 'is_filled_by_user')->default(false);
 
             $table->timestamps();
         });

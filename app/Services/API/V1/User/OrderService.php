@@ -33,41 +33,41 @@ class OrderService
             $search = $request->search ?? null;
             $dateFrom = $request->date_from ?? null;
             $dateTo = $request->date_to ?? null;
-            
+
             $query = Order::where('user_id', $this->user->id)
                 ->with(['orderable', 'detail'])
                 ->withCount('addons');
-                
-            
+
             // Apply search if provided
             if ($search) {
                 $query->where(function ($q) use ($search) {
                     // Search in order_number
-                    $q->where('order_number', 'like', '%' . $search . '%')
+                    $q->where('order_number', 'like', '%'.$search.'%')
                         // Search in status
-                        ->orWhere('status', 'like', '%' . $search . '%')
+                        ->orWhere('status', 'like', '%'.$search.'%')
                         // Search in related order detail (business name)
                         ->orWhereHas('detail', function ($detailQuery) use ($search) {
-                            $detailQuery->where('name', 'like', '%' . $search . '%')
-                                ->orWhere('industry', 'like', '%' . $search . '%');
+                            $detailQuery->where('name', 'like', '%'.$search.'%')
+                                ->orWhere('industry', 'like', '%'.$search.'%');
                         })
                         // Search in orderable (Package/Addon) title
                         ->orWhereHasMorph('orderable', [Package::class, Addon::class], function ($morphQuery) use ($search) {
-                            $morphQuery->where('title', 'like', '%' . $search . '%');
+                            $morphQuery->where('title', 'like', '%'.$search.'%');
                         });
                 });
             }
-            
+
             // Apply date range filter if provided
             if ($dateFrom) {
                 $query->where('start_date', '>=', $dateFrom);
             }
-            
+
             if ($dateTo) {
                 $query->where('start_date', '<=', $dateTo);
             }
-            
+
             $orders = $query->paginate($perPage);
+
             return $orders;
         } catch (Exception $e) {
             Log::error('OrderService::index'.$e->getMessage());
@@ -99,8 +99,8 @@ class OrderService
                 'status' => 'pending',
             ]);
 
-            //file upload
-            if (isset($validatedData['attachment']) && !empty($validatedData['attachment'])) {
+            // file upload
+            if (isset($validatedData['attachment']) && ! empty($validatedData['attachment'])) {
                 $validatedData['attachment'] = array_map(function ($attachment) {
                     return Helper::fileUpload(
                         $attachment,
@@ -112,12 +112,13 @@ class OrderService
             // Create order detail
             $orderDetail = OrderDetail::create([
                 'order_id' => $order->id,
-                'name' => $validatedData['business_name'],
-                'industry' => $validatedData['business_industry'],
-                'requirement' => $validatedData['business_requirement_description'],
-                'voice_preference' => $validatedData['voice_preference'],
-                'attachment' => $validatedData['attachment']??null,
+                'name' => isset($validatedData['business_name']) ? $validatedData['business_name'] : null,
+                'industry' => isset($validatedData['business_industry']) ? $validatedData['business_industry'] : null,
+                'requirement' => isset($validatedData['business_requirement_description']) ? $validatedData['business_requirement_description'] : null,
+                'voice_preference' => isset($validatedData['voice_preference']) ? $validatedData['voice_preference'] : null,
+                'attachment' => isset($validatedData['attachment']) ? $validatedData['attachment'] : null,
                 'amount' => $price,
+                'is_filled_by_user' => false,
             ]);
             DB::commit();
 
@@ -138,12 +139,13 @@ class OrderService
     {
         try {
             $order = Order::where('user_id', $this->user->id)
-            ->with('orderable','detail','payments','invoices','addons','delivery')
-            ->withCount('addons')
-            ->find($id);
+                ->with('orderable', 'detail', 'payments', 'invoices', 'addons', 'delivery')
+                ->withCount('addons')
+                ->find($id);
             if (! $order) {
                 throw new Exception('Order not found');
             }
+
             return $order;
         } catch (Exception $e) {
             Log::error('OrderService::show'.$e->getMessage());
@@ -159,7 +161,36 @@ class OrderService
     public function update(int $id, array $validatedData)
     {
         try {
+            DB::beginTransaction();
+            $order = Order::where('user_id', $this->user->id)->find($id);
+            if (! $order) {
+                throw new Exception('Order not found');
+            }
+            $order->update($validatedData);
+            $orderDetail = OrderDetail::where('order_id', $order->id)->first();
+            if (! $orderDetail) {
+                throw new Exception('Order detail not found');
+            }
+            if (isset($validatedData['attachment']) && ! empty($validatedData['attachment'])) {
+                $validatedData['attachment'] = array_map(function ($attachment) {
+                    return Helper::fileUpload(
+                        $attachment,
+                        'order/details',
+                        'order_detail_'.time()
+                    );
+                }, $validatedData['attachment']);
+            }
+            $orderDetail->update([
+                'name' => isset($validatedData['business_name']) ? $validatedData['business_name'] : null,
+                'industry' => isset($validatedData['business_industry']) ? $validatedData['business_industry'] : null,
+                'requirement' => isset($validatedData['business_requirement_description']) ? $validatedData['business_requirement_description'] : null,
+                'voice_preference' => isset($validatedData['voice_preference']) ? $validatedData['voice_preference'] : null,
+                'attachment' => isset($validatedData['attachment']) ? $validatedData['attachment'] : null,
+                'is_filled_by_user' => true,
+            ]);
+            DB::commit();
 
+            return $order;
         } catch (Exception $e) {
             Log::error('OrderService::update'.$e->getMessage());
             throw $e;
@@ -200,5 +231,4 @@ class OrderService
         }
         throw new Exception('Invalid type');
     }
-
 }
