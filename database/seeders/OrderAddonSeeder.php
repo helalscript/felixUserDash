@@ -14,17 +14,18 @@ class OrderAddonSeeder extends Seeder
     {
         $addons = [
             [
-                'title' => 'Explainer Video',
+                'title' => 'Complete Social Media Creatives ',
                 'sub_title' => '2D Animation',
-                'description' => 'Engaging 2-minute 2D animated video to communicate your product or service. Includes scriptwriting, storyboarding, voice-over and full animation.',
-                'price' => 299.99,
+                'description' => 'We will create additional versions of your delivered content in 9:16 vertical and 1:1 square formats, optimized for reels, shorts, and social posts.
+                Ideal for expanding reach across multiple platforms without redesigning the main creative.',
+                'price' => 99.00,
                 'status' => 'active',
             ],
             [
-                'title' => 'Promotional Video',
+                'title' => 'Captions & Subtitles',
                 'sub_title' => 'Brand Story',
-                'description' => 'Up to 60-second animated brand story or social media promo. Clean visuals, up to 4K resolution, custom characters and motion graphics.',
-                'price' => 499.00,
+                'description' => 'We will add on-screen captions built for mobile viewing to increase retention and reach on social platforms. This helps viewers engage even without sound and improves watch-through rates.',
+                'price' => 45.00,
                 'status' => 'active',
             ],
             [
@@ -38,7 +39,7 @@ class OrderAddonSeeder extends Seeder
                 'title' => 'Illustration & Asset',
                 'sub_title' => 'Illustration & Asset Package',
                 'description' => 'Full set of vector characters, icons, backgrounds and design assets for use in animation or web. Ideal if you prefer in-house animation but need the art assets.',
-                'price' => 299.00,
+                'price' => 199.00,
                 'status' => 'active',
             ],
         ];
@@ -51,5 +52,3 @@ class OrderAddonSeeder extends Seeder
         }
     }
 }
-
-
