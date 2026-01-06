@@ -5,6 +5,7 @@ use App\Http\Controllers\API\V1\Admin\Order\OrderController as AdminOrderControl
 use App\Http\Controllers\API\V1\Admin\Package\PackageController as AdminPackageController;
 use App\Http\Controllers\API\V1\Admin\SupportChat\SupportChatController as AdminSupportChatController;
 use App\Http\Controllers\API\V1\Admin\System\DynamicPageController;
+use App\Http\Controllers\API\V1\Admin\User\UserController as AdminUserController;
 use App\Http\Controllers\API\V1\Admin\SystemSettingController;
 use App\Http\Controllers\API\V1\Auth\LoginController;
 use App\Http\Controllers\API\V1\Auth\LogoutController;
@@ -80,6 +81,8 @@ Route::post('payments/stripe/handle-webhook', [UserPaymentController::class, 'ha
 
 // this is for admin
 Route::group(['middleware' => ['auth:api', 'is_admin'], 'prefix' => 'admin','as' => 'admin.'], function ($router) {
+    // users
+    Route::apiResource('users', AdminUserController::class);
     Route::apiResource('packages', AdminPackageController::class);
     Route::apiResource('addons', AdminAddonController::class);
 

@@ -74,7 +74,6 @@ class SupportChatController extends Controller
     {
         try {
             $result = $this->supportChatService->getMessages($request);
-
             return Helper::jsonResponse(true, 'Support chat messages fetched successfully', 200, $result);
         } catch (Exception $e) {
             Log::error('SupportChatController::getMessages'.$e->getMessage());
