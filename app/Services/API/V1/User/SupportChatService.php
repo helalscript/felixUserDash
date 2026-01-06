@@ -190,10 +190,12 @@ class SupportChatService
         try {
             $perPage = $request->per_page ?? 20;
             $supportChat = SupportChat::where('user_id', $this->user->id)
-                ->with('messages', function ($query) use ($perPage) {
-                    $query->orderBy('id', 'desc')
+                ->with(['messages'=> function ($query) use ($perPage) {
+                    $query->orderBy('id', 'asc')
+                    ->with('user:id,name,avatar,role')
+                    ->with('user:id,name,avatar,role')
                         ->paginate($perPage);
-                })
+                }])
                 ->first();
             // if support chat not found, create a new support chat
             if (! $supportChat) {
@@ -202,9 +204,11 @@ class SupportChatService
                     'user_id' => $this->user->id,
                     'status' => 'open',
                 ]);
-                $supportChat->load('messages');
+                $supportChat->load(['messages'=>function($query){
+                    $query->orderBy('id', 'ase')->with('user:id,name,avatar,role');
+                }]);
             }
-
+            // dd($supportChat->toArray());
             return $supportChat;
         } catch (Exception $e) {
             Log::error('SupportChatService::getMessages'.$e->getMessage());
@@ -257,6 +261,7 @@ class SupportChatService
             }
 
             DB::commit();
+
             return $message;
         } catch (Exception $e) {
             DB::rollBack();
