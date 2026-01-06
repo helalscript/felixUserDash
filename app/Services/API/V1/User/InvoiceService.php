@@ -56,20 +56,8 @@ class InvoiceService
     public function show(int $id)
     {
         try {
-            //this user orders ids
-            $orders = Order::where('user_id', $this->user->id)->get()->pluck('id');
-            if ($orders->isEmpty()) {
-                return [];
-            }
-            $orderAddons = OrderAddon::where('user_id', $this->user->id)->get()->pluck('id');
-            if ($orderAddons->isEmpty()) {
-                return [];
-            }
-            $invoice = Invoice::where('invoiceable_id', $id)
-                ->where('invoiceable_type', Order::class)
-                ->orWhereIn('invoiceable_id', $orderAddons)
-                ->where('invoiceable_type', OrderAddon::class)
-                ->first();
+            // this user orders ids
+            $invoice = Invoice::find($id);
             if (! $invoice) {
                 throw new Exception('Invoice not found');
             }
