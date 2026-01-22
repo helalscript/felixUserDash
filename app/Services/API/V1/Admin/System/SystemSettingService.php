@@ -247,4 +247,79 @@ class SystemSettingService
             throw $e;
         }
     }
+
+    public function getPaypalSetting()
+    {
+        try {
+            $paypalSettings = [
+                'paypal_client_id' => env('PAYPAL_CLIENT_ID', ''),
+                'paypal_client_secret' => env('PAYPAL_CLIENT_SECRET', ''),
+                'paypal_mode' => env('PAYPAL_MODE', 'sandbox'),
+                'paypal_webhook_id' => env('PAYPAL_WEBHOOK_ID', ''),
+            ];
+
+            return $paypalSettings;
+
+        } catch (Exception $e) {
+            Log::error('SystemSettingService::getPaypalSetting'.$e->getMessage());
+            throw $e;
+        }
+    }
+
+    public function updatePaypalSetting(array $validatedData)
+    {
+        try {
+            $envPath = base_path('.env');
+
+            if (! File::exists($envPath)) {
+                throw new Exception('.env file not found.');
+            }
+
+            $envContent = File::get($envPath);
+            $lineBreak = PHP_EOL;
+
+            $paypalKeys = [
+                'paypal_client_id' => 'PAYPAL_CLIENT_ID',
+                'paypal_client_secret' => 'PAYPAL_CLIENT_SECRET',
+                'paypal_mode' => 'PAYPAL_MODE',
+                'paypal_webhook_id' => 'PAYPAL_WEBHOOK_ID',
+            ];
+
+            foreach ($paypalKeys as $key => $envKey) {
+
+                // New value or keep old
+                if (array_key_exists($key, $validatedData)) {
+                    $value = $validatedData[$key];
+                } else {
+                    preg_match("/^{$envKey}=(.*)$/m", $envContent, $matches);
+                    $value = $matches[1] ?? '';
+                }
+
+                // Remove existing quotes
+                $value = trim($value, '"');
+
+                // Always wrap PayPal keys in quotes
+                $value = "\"{$value}\"";
+
+                // Update or append
+                if (preg_match("/^{$envKey}=.*/m", $envContent)) {
+                    $envContent = preg_replace(
+                        "/^{$envKey}=.*/m",
+                        "{$envKey}={$value}",
+                        $envContent
+                    );
+                } else {
+                    $envContent .= "{$lineBreak}{$envKey}={$value}";
+                }
+            }
+
+            File::put($envPath, $envContent);
+            $this->clearCache();
+            return true;
+
+        } catch (Exception $e) {
+            Log::error('SystemSettingService::updatePaypalSetting - '.$e->getMessage());
+            throw $e;
+        }
+    }
 }

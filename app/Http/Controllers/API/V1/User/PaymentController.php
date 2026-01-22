@@ -59,7 +59,7 @@ class PaymentController extends Controller
         $validatedData = $request->validate([
             'success_url' => 'required|url',
             'cancel_url' => 'required|url',
-            'payment_method' => 'required|in:stripe', //in future we will add other payment methods like paypal, bank transfer, etc.
+            'payment_method' => 'required|in:stripe,paypal',
             'order_id' => 'required_without:order_addon_id|integer|exists:orders,id',
             'order_addon_id' => 'required_without:order_id|integer|exists:order_addons,id',
         ]);
@@ -94,7 +94,7 @@ class PaymentController extends Controller
     public function handleWebhook(Request $request)
     {
         try {
-            $result = $this->paymentService->handleWebhook($request);
+            $result = $this->paymentService->handleWebhook($request, 'stripe');
 
             // Always return 200 to Stripe
             return response()->json([
@@ -110,6 +110,36 @@ class PaymentController extends Controller
 
             // Still return 200 to prevent Stripe from retrying
             // But log the error for debugging
+            return response()->json([
+                'success' => false,
+                'message' => 'Webhook received but processing failed',
+                'error' => $e->getMessage(),
+            ], 200);
+        }
+    }
+
+    /**
+     * Handle PayPal webhook events
+     * Note: This endpoint should be excluded from CSRF and auth middleware
+     */
+    public function handlePaypalWebhook(Request $request)
+    {
+        try {
+            $result = $this->paymentService->handleWebhook($request, 'paypal');
+
+            // Always return 200 to PayPal
+            return response()->json([
+                'success' => true,
+                'message' => 'Webhook processed successfully',
+            ], 200);
+
+        } catch (Exception $e) {
+            Log::error('PaymentController::handlePaypalWebhook: '.$e->getMessage(), [
+                'request_content' => $request->getContent(),
+                'headers' => $request->headers->all(),
+            ]);
+
+            // Still return 200 to prevent PayPal from retrying
             return response()->json([
                 'success' => false,
                 'message' => 'Webhook received but processing failed',

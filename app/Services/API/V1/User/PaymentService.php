@@ -11,8 +11,10 @@ use Illuminate\Support\Facades\Log;
 
 class PaymentService
 {
-    public function __construct(protected StripeService $stripeService)
-    {
+    public function __construct(
+        protected StripeService $stripeService,
+        protected PayPalService $paypalService
+    ) {
         //
     }
 
@@ -101,15 +103,20 @@ class PaymentService
             $validatedData['user_id'] = $user->id;
 
 
-            // Check if payment method is supported
-            if ($validatedData['payment_method'] !== 'stripe') {
+            // Check payment method and create payment accordingly
+            $orderType = isset($validatedData['order_addon_id']) ? 'addon' : 'order';
+            
+            if ($validatedData['payment_method'] === 'stripe') {
+                // Create payment intent via Stripe
+                $paymentUrl = $this->stripeService->stripePaymentUrl($validatedData, $orderType, $order);
+                return $paymentUrl;
+            } elseif ($validatedData['payment_method'] === 'paypal') {
+                // Create PayPal payment
+                $paymentUrl = $this->paypalService->createPayment($validatedData, $orderType, $order);
+                return $paymentUrl;
+            } else {
                 throw new Exception('Payment method not supported');
             }
-
-            // Create payment intent via Stripe
-            $clientSecret = $this->stripeService->stripePaymentUrl($validatedData, isset($validatedData['order_addon_id']) ? 'addon' : 'order',$order);
-
-            return $clientSecret;
         } catch (Exception $e) {
             Log::error('PaymentService::createPaymentIntent: ' . $e->getMessage());
             throw $e;
@@ -117,13 +124,19 @@ class PaymentService
     }
 
     /**
-     * Handle Stripe webhook
-     * Note: No user authentication here as webhook comes from Stripe
+     * Handle payment webhook (Stripe or PayPal)
+     * Note: No user authentication here as webhook comes from payment provider
      */
-    public function handleWebhook($request)
+    public function handleWebhook($request, $provider = 'stripe')
     {
         try {
-            $result = $this->stripeService->stripeHandleWebhook($request);
+            if ($provider === 'stripe') {
+                $result = $this->stripeService->stripeHandleWebhook($request);
+            } elseif ($provider === 'paypal') {
+                $result = $this->paypalService->handleWebhook($request);
+            } else {
+                throw new Exception('Invalid payment provider');
+            }
 
             return $result;
         } catch (Exception $e) {

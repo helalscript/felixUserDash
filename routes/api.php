@@ -83,6 +83,7 @@ Route::group(['middleware' => ['auth:api', 'is_user']], function ($router) {
 });
 // this is for user payment webhook in public route
 Route::post('payments/stripe/handle-webhook', [UserPaymentController::class, 'handleWebhook']);
+Route::post('payments/paypal/handle-webhook', [UserPaymentController::class, 'handlePaypalWebhook']);
 
 // this is for admin
 Route::group(['middleware' => ['auth:api', 'is_admin'], 'prefix' => 'admin','as' => 'admin.'], function ($router) {
@@ -103,6 +104,8 @@ Route::group(['middleware' => ['auth:api', 'is_admin'], 'prefix' => 'admin','as'
         Route::get('clear-cache', [SystemSettingController::class, 'clearCache']);
         Route::get('stripe-settings', [SystemSettingController::class, 'getStripeSetting']);
         Route::post('stripe-settings', [SystemSettingController::class, 'updateStripeSetting']);
+        Route::get('paypal-settings', [SystemSettingController::class, 'getPaypalSetting']);
+        Route::post('paypal-settings', [SystemSettingController::class, 'updatePaypalSetting']);
     });
 
     // support chats
