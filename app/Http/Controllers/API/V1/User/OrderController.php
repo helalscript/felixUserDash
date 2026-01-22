@@ -42,7 +42,7 @@ class OrderController extends Controller
         $validatedData = $request->validate([
             'package_id' => 'required_without:addon_id|exists:packages,id',
             'addon_id' => 'required_without:package_id|exists:addons,id',
-
+            'coupon_code' => 'nullable|string|max:50',
             'business_name' => 'nullable|string|max:255',
             'business_industry' => 'nullable|string|max:255',
             'business_requirement_description' => 'nullable|string|max:10000',

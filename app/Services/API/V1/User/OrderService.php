@@ -4,6 +4,8 @@ namespace App\Services\API\V1\User;
 
 use App\Helpers\Helper;
 use App\Models\Addon;
+use App\Models\Coupon;
+use App\Models\CouponUsage;
 use App\Models\Order;
 use App\Models\OrderDetail;
 use App\Models\Package;
@@ -85,7 +87,31 @@ class OrderService
         try {
             DB::beginTransaction();
             $type = isset($validatedData['package_id']) ? 'package' : 'addon';
-            $price = $this->getPrice(isset($validatedData['package_id']) ? $validatedData['package_id'] : $validatedData['addon_id'], $type);
+            $originalPrice = $this->getPrice(isset($validatedData['package_id']) ? $validatedData['package_id'] : $validatedData['addon_id'], $type);
+
+            // Handle coupon if provided
+            $coupon = null;
+            $discountAmount = 0;
+            $finalAmount = $originalPrice;
+
+            if (isset($validatedData['coupon_code']) && !empty($validatedData['coupon_code'])) {
+                $coupon = Coupon::where('code', $validatedData['coupon_code'])->first();
+                
+                if ($coupon) {
+                    $coupon->updateStatus();
+                    $coupon->refresh();
+
+                    // Validate coupon
+                    if ($coupon->isValid() && $originalPrice >= $coupon->min_order_value) {
+                        $discountAmount = $coupon->calculateDiscount($originalPrice);
+                        $finalAmount = $originalPrice - $discountAmount;
+                    } else {
+                        throw new Exception('Invalid coupon or order amount does not meet minimum requirement.');
+                    }
+                } else {
+                    throw new Exception('Coupon code not found.');
+                }
+            }
 
             $order = Order::create([
                 'user_id' => $this->user->id,
@@ -95,9 +121,25 @@ class OrderService
                 'progress' => 0,
                 'start_date' => now(),
                 'end_date' => null,
-                'amount' => $price,
+                'amount' => $finalAmount,
+                'original_amount' => $originalPrice,
+                'discount_amount' => $discountAmount,
+                'coupon_id' => $coupon ? $coupon->id : null,
                 'status' => 'pending',
             ]);
+
+            // Record coupon usage if coupon was applied
+            if ($coupon) {
+                CouponUsage::create([
+                    'coupon_id' => $coupon->id,
+                    'user_id' => $this->user->id,
+                    'order_id' => $order->id,
+                    'used_at' => now(),
+                ]);
+
+                // Update coupon status
+                $coupon->updateStatus();
+            }
 
             // file upload
             if (isset($validatedData['attachment']) && ! empty($validatedData['attachment'])) {
@@ -117,7 +159,7 @@ class OrderService
                 'requirement' => isset($validatedData['business_requirement_description']) ? $validatedData['business_requirement_description'] : null,
                 'voice_preference' => isset($validatedData['voice_preference']) ? $validatedData['voice_preference'] : null,
                 'attachment' => isset($validatedData['attachment']) ? $validatedData['attachment'] : null,
-                'amount' => $price,
+                'amount' => $finalAmount,
                 'is_filled_by_user' => false,
             ]);
             DB::commit();

@@ -131,4 +131,20 @@ class User extends Authenticatable implements JWTSubject
     {
         return $this->hasMany(Order::class);
     }
+
+    /**
+     * Get the coupons assigned to this user.
+     */
+    public function coupons()
+    {
+        return $this->belongsToMany(Coupon::class)->withPivot('checkout_link')->withTimestamps();
+    }
+
+    /**
+     * Get the coupon usages by this user.
+     */
+    public function couponUsages()
+    {
+        return $this->hasMany(CouponUsage::class);
+    }
 }

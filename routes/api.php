@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\API\V1\Admin\Addon\AddonController as AdminAddonController;
+use App\Http\Controllers\API\V1\Admin\Coupon\CouponController as AdminCouponController;
 use App\Http\Controllers\API\V1\Admin\Order\OrderController as AdminOrderController;
 use App\Http\Controllers\API\V1\Admin\Package\PackageController as AdminPackageController;
 use App\Http\Controllers\API\V1\Admin\SupportChat\SupportChatController as AdminSupportChatController;
@@ -15,6 +16,7 @@ use App\Http\Controllers\API\V1\Auth\SocialLoginController;
 use App\Http\Controllers\API\V1\Auth\UserController;
 use App\Http\Controllers\API\V1\Public\GeneralSettingController;
 use App\Http\Controllers\API\V1\User\AddonController as UserAddonController;
+use App\Http\Controllers\API\V1\User\CouponController as UserCouponController;
 use App\Http\Controllers\API\V1\User\InvoiceController as UserInvoiceController;
 use App\Http\Controllers\API\V1\User\NotificationController;
 use App\Http\Controllers\API\V1\User\OrderAddonController as UserOrderAddonController;
@@ -75,6 +77,9 @@ Route::group(['middleware' => ['auth:api', 'is_user']], function ($router) {
 
     //invoices
     Route::apiResource('invoices', UserInvoiceController::class)->only(['index', 'show']);
+
+    // coupons
+    Route::post('coupons/validate', [UserCouponController::class, 'validate']);
 });
 // this is for user payment webhook in public route
 Route::post('payments/stripe/handle-webhook', [UserPaymentController::class, 'handleWebhook']);
@@ -108,6 +113,9 @@ Route::group(['middleware' => ['auth:api', 'is_admin'], 'prefix' => 'admin','as'
     Route::apiResource('orders', AdminOrderController::class)->except('update', 'store');
     Route::post('orders/update-status/{id}', [AdminOrderController::class, 'updateStatus']);
     Route::post('orders/file-upload/{id}', [AdminOrderController::class, 'fileUpload']);
+
+    // coupons
+    Route::apiResource('coupons', AdminCouponController::class);
 });
 
 // this is for public

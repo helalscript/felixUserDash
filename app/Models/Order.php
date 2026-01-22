@@ -23,6 +23,9 @@ class Order extends Model
         'start_date',
         'end_date',
         'amount',
+        'coupon_id',
+        'original_amount',
+        'discount_amount',
         'payment_status',
         'status',
     ];
@@ -41,6 +44,9 @@ class Order extends Model
         'start_date' => 'date:Y-m-d',
         'end_date' => 'date:Y-m-d',
         'amount' => 'decimal:2',
+        'coupon_id' => 'integer',
+        'original_amount' => 'decimal:2',
+        'discount_amount' => 'decimal:2',
         'payment_status' => 'string',
         'status' => 'string',
     ];
@@ -93,6 +99,14 @@ class Order extends Model
     public function delivery()
     {
         return $this->hasOne(OrderDelivery::class);
+    }
+
+    /**
+     * Get the coupon used for this order.
+     */
+    public function coupon()
+    {
+        return $this->belongsTo(Coupon::class);
     }
 }
 
