@@ -19,7 +19,7 @@ class LoginController extends Controller
      * @bodyParam password string required The password of the user.
      * @bodyParam role string required The role of the user. Can be either customer or contractor.
      */
-    public function Login(Request $request)
+    public function login(Request $request)
     {
 
         // return $next($request);
@@ -53,6 +53,18 @@ class LoginController extends Controller
             if (! Hash::check($request->password, $user->password)) {
                 return Helper::jsonErrorResponse('Invalid password', 401);
             }
+            
+            // * Track login information
+            $ipAddress = $request->ip();
+            $user->last_login_at = now();
+            $user->login_count = ($user->login_count ?? 0) + 1;
+            $user->last_login_ip = $ipAddress;
+            
+            // Try to get location from IP (optional - can be enhanced with IP geolocation service)
+            // For now, we'll store the IP and location can be determined later
+            $user->location = $this->getLocationFromIp($ipAddress);
+            $user->save();
+            
             // * Generate token if email is verified
             $token = auth('api')->login($user);
 
@@ -98,5 +110,40 @@ class LoginController extends Controller
 
             return Helper::jsonErrorResponse($e->getMessage(), 500);
         }
+    }
+
+    /**
+     * Get location from IP address
+     * 
+     * @param string $ip
+     * @return string|null
+     */
+    private function getLocationFromIp(string $ip): ?string
+    {
+        try {
+            // Skip local/private IPs
+            if (!filter_var($ip, FILTER_VALIDATE_IP, FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE)) {
+                return 'Local';
+            }
+
+            // Use a free IP geolocation service (ip-api.com)
+            $response = @file_get_contents("http://ip-api.com/json/{$ip}?fields=status,country,regionName,city");
+            
+            if ($response) {
+                $data = json_decode($response, true);
+                if (isset($data['status']) && $data['status'] === 'success') {
+                    $locationParts = array_filter([
+                        $data['city'] ?? null,
+                        $data['regionName'] ?? null,
+                        $data['country'] ?? null,
+                    ]);
+                    return !empty($locationParts) ? implode(', ', $locationParts) : null;
+                }
+            }
+        } catch (Exception $e) {
+            Log::error('LoginController::getLocationFromIp - ' . $e->getMessage());
+        }
+
+        return null;
     }
 }

@@ -83,6 +83,7 @@ Route::post('payments/stripe/handle-webhook', [UserPaymentController::class, 'ha
 Route::group(['middleware' => ['auth:api', 'is_admin'], 'prefix' => 'admin','as' => 'admin.'], function ($router) {
     // users
     Route::apiResource('users', AdminUserController::class);
+    Route::post('users/reset-password/{id}', [AdminUserController::class, 'resetPassword']);
     Route::apiResource('packages', AdminPackageController::class);
     Route::apiResource('addons', AdminAddonController::class);
 

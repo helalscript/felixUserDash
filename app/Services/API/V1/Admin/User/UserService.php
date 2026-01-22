@@ -27,18 +27,39 @@ class UserService
     {
         try {
             $perPage = $request->per_page ?? 10;
-            $users = User::select('id', 'name', 'email', 'phone', 'avatar', 'role', 'created_at')
+            $users = User::select(
+                'id',
+                'name',
+                'email',
+                'user_name',
+                'phone',
+                'avatar',
+                'role',
+                'created_at',
+                'last_login_at',
+                'login_count',
+                'last_login_ip',
+                'location'
+            )
                 ->where('role', '!=', 'admin')
                 ->where('email_verified_at', '!=', null)
                 ->when($request->filled('search'), function ($query) use ($request) {
-                    $query->where('name', 'like', '%'.$request->search.'%')
-                        ->orWhere('email', 'like', '%'.$request->search.'%')
-                        ->orWhere('phone', 'like', '%'.$request->search.'%');
+                    $search = $request->search;
+                    $query->where(function ($q) use ($search) {
+                        $q->where('name', 'like', '%'.$search.'%')
+                            ->orWhere('email', 'like', '%'.$search.'%')
+                            ->orWhere('user_name', 'like', '%'.$search.'%')
+                            ->orWhere('phone', 'like', '%'.$search.'%')
+                            ->orWhere('location', 'like', '%'.$search.'%')
+                            ->orWhereDate('created_at', 'like', '%'.$search.'%')
+                            ->orWhereDate('last_login_at', 'like', '%'.$search.'%');
+                    });
                 })
                 ->when($request->filled('role'), function ($query) use ($request) {
                     $query->where('role', $request->role);
                 })
                 ->withCount('orders')
+                ->orderBy('created_at', 'desc')
                 ->paginate($perPage);
 
             return $users;
@@ -84,13 +105,30 @@ class UserService
     public function show(int $id)
     {
         try {
-            $user = User::select('id', 'name', 'email', 'phone', 'avatar', 'role', 'created_at')
+            $user = User::select(
+                'id',
+                'name',
+                'email',
+                'user_name',
+                'phone',
+                'avatar',
+                'role',
+                'created_at',
+                'last_login_at',
+                'login_count',
+                'last_login_ip',
+                'location',
+                'gender',
+                'brithdate',
+                'timezone',
+                'status'
+            )
                 ->where('email_verified_at', '!=', null)
                 ->findOrFail($id);
 
             return $user;
         } catch (Exception $e) {
-            Log::error('UserService::update'.$e->getMessage());
+            Log::error('UserService::show'.$e->getMessage());
             throw $e;
         }
     }
@@ -118,6 +156,7 @@ class UserService
                 $validatedData['avatar'] = $user->avatar;
             }
             $user->update($validatedData);
+
             return $user;
         } catch (Exception $e) {
             Log::error('UserService::update'.$e->getMessage());
@@ -139,6 +178,24 @@ class UserService
             return $user;
         } catch (Exception $e) {
             Log::error('UserService::destroy'.$e->getMessage());
+            throw $e;
+        }
+    }
+
+    public function resetPassword(string $password, int $id)
+    {
+        try {
+            DB::beginTransaction();
+            $user = User::where('email_verified_at', '!=', null)->findOrFail($id);
+            $user->password = bcrypt($password);
+            $user->save();
+            DB::commit();
+
+            return $user;
+
+        } catch (Exception $e) {
+            DB::rollBack();
+            Log::error('UserService::resetPassword'.$e->getMessage());
             throw $e;
         }
     }
