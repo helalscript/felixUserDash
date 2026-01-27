@@ -4,11 +4,7 @@ namespace App\Http\Controllers\API\V1\Auth;
 
 use App\Helpers\Helper;
 use App\Http\Controllers\Controller;
-use App\Models\Contractor;
-use App\Models\License;
-use App\Models\NotificationSetting;
 use App\Models\User;
-use App\Notifications\UserRegistrationNotification;
 use Exception;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;

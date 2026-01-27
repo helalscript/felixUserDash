@@ -105,25 +105,10 @@ class UserService
     public function show(int $id)
     {
         try {
-            $user = User::select(
-                'id',
-                'name',
-                'email',
-                'user_name',
-                'phone',
-                'avatar',
-                'role',
-                'created_at',
-                'last_login_at',
-                'login_count',
-                'last_login_ip',
-                'location',
-                'gender',
-                'brithdate',
-                'timezone',
-                'status'
-            )
+            $user = User::select('id', 'name', 'email', 'user_name', 'phone', 'avatar', 'role', 'created_at', 'last_login_at', 'login_count', 'last_login_ip', 'location', 'gender', 'brithdate', 'timezone', 'status')
                 ->where('email_verified_at', '!=', null)
+                ->where('role', '!=', 'admin')
+                ->withCount('orders')
                 ->findOrFail($id);
 
             return $user;
