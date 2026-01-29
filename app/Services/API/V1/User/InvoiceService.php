@@ -26,7 +26,7 @@ class InvoiceService
     public function index($request)
     {
         try {
-            $perPage = $request->per_page ?? 10;
+            $perPage = $request->per_page ?? 100;
             // this user orders ids
             $orders = Order::where('user_id', $this->user->id)->get()->pluck('id');
             $orderAddons = OrderAddon::where('user_id', $this->user->id)->get()->pluck('id');

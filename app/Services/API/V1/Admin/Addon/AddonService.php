@@ -24,7 +24,7 @@ class AddonService
     public function index($request)
     {
         try {
-            $per_page = $request->per_page ?? 25;
+            $per_page = $request->per_page ?? 100;
 
             $query = Addon::query()
                 ->select('id', 'title', 'sub_title', 'description', 'price', 'status');

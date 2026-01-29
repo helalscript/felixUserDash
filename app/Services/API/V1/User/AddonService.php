@@ -23,7 +23,7 @@ class AddonService
     public function index($request)
     {
         try {
-            $per_page = $request->per_page ?? 25;   
+            $per_page = $request->per_page ?? 100;   
             $addons = Addon::select('id', 'title', 'sub_title', 'description', 'price', 'status')
                 ->paginate($per_page);
             return $addons;

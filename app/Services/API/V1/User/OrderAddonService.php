@@ -26,7 +26,7 @@ class OrderAddonService
     public function index($request)
     {
         try {
-            $per_page = $request->per_page ?? 25;
+            $per_page = $request->per_page ?? 100;
             $query = OrderAddon::query()
             ->with(['addon', 'order', 'payments', 'invoices'])
             ->where('user_id', $this->user->id)

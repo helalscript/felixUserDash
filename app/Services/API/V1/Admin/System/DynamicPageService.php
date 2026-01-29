@@ -25,7 +25,7 @@ class DynamicPageService
     {
         try {
 
-            $perPage = $request->per_page ?? 25;
+            $perPage = $request->per_page ?? 100;
             $dynamicPages = DynamicPage::select('id', 'page_title', 'page_slug','status')
                 ->paginate($perPage);
 

@@ -26,7 +26,7 @@ class SupportChatService
     {
         try {
             $searchByName = $request->search_by_name ?? null;
-            $perPage = $request->per_page ?? 25;
+            $perPage = $request->per_page ?? 100;
             // get last message from support chat
             $query = SupportChat::query()
                 ->select('id', 'user_id', 'subject', 'status')
