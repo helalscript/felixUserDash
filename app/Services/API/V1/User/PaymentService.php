@@ -29,7 +29,7 @@ class PaymentService
                 throw new Exception('User not authenticated');
             }
 
-            $perPage = $request->per_page ?? 10;
+            $perPage = $request->per_page ?? 100;
             $payments = Payment::where('user_id', $user->id)
                 ->with(['paymentable'])
                 ->latest()

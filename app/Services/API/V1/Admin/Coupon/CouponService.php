@@ -28,7 +28,7 @@ class CouponService
     public function index($request)
     {
         try {
-            $perPage = $request->per_page ?? 10;
+            $perPage = $request->per_page ?? 100;
 
             $coupons = Coupon::withCount('usages')
                 ->withCount('users')

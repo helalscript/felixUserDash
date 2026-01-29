@@ -26,7 +26,7 @@ class UserService
     public function index($request)
     {
         try {
-            $perPage = $request->per_page ?? 10;
+            $perPage = $request->per_page ?? 1000;
             $users = User::select(
                 'id',
                 'name',

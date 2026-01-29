@@ -28,7 +28,7 @@ class OrderService
     {
         try {
 
-            $perPage = $request->per_page ?? 25;
+            $perPage = $request->per_page ?? 100;
             $search = $request->search ?? null;
             $dateFrom = $request->date_from ?? null;
             $dateTo = $request->date_to ?? null;

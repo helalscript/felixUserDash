@@ -31,7 +31,7 @@ class OrderService
     public function index($request)
     {
         try {
-            $perPage = $request->per_page ?? 10;
+            $perPage = $request->per_page ?? 100;
             $search = $request->search ?? null;
             $dateFrom = $request->date_from ?? null;
             $dateTo = $request->date_to ?? null;
