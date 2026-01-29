@@ -54,6 +54,8 @@ class PayPalService
     public function createPayment(array $validatedData, string $orderType, $order): string
     {
         try {
+            $amountValue = (string) number_format((float) $validatedData['amount'], 2, '.', '');
+
             $payer = new Payer();
             $payer->setPaymentMethod('paypal');
 
@@ -61,14 +63,14 @@ class PayPalService
             $item->setName('Order Payment')
                 ->setCurrency('USD')
                 ->setQuantity(1)
-                ->setPrice($validatedData['amount']);
+                ->setPrice($amountValue);
 
             $itemList = new ItemList();
             $itemList->setItems([$item]);
 
             $amount = new Amount();
             $amount->setCurrency('USD')
-                ->setTotal($validatedData['amount']);
+                ->setTotal($amountValue);
 
             $transaction = new Transaction();
             $transaction->setAmount($amount)
@@ -147,13 +149,8 @@ class PayPalService
     public function handleWebhook($request)
     {
         try {
-            $headers = $request->headers->all();
             $body = $request->getContent();
 
-            Log::info('PayPalService::handleWebhook Event received');
-
-            // Verify webhook signature (PayPal provides webhook verification)
-            // For now, we'll process the webhook events
             $event = json_decode($body, true);
 
             if (!$event) {
@@ -164,6 +161,12 @@ class PayPalService
             $eventType = $event['event_type'] ?? null;
 
             switch ($eventType) {
+                case 'PAYMENTS.PAYMENT.CREATED':
+                    // User approved payment on PayPal - execute and capture the payment
+                    Log::info('PayPalService::handleWebhook Payment created (user approved): ' . ($event['resource']['id'] ?? 'unknown'));
+                    $this->handlePaymentCreated($event);
+                    return true;
+
                 case 'PAYMENT.SALE.COMPLETED':
                 case 'PAYMENT.CAPTURE.COMPLETED':
                     Log::info('PayPalService::handleWebhook Payment completed: ' . ($event['resource']['id'] ?? 'unknown'));
@@ -187,7 +190,104 @@ class PayPalService
     }
 
     /**
-     * Handle successful payment.
+     * Handle PAYMENTS.PAYMENT.CREATED - User approved payment on PayPal.
+     * Execute the payment and record it.
+     */
+    protected function handlePaymentCreated($event): void
+    {
+        DB::beginTransaction();
+
+        try {
+            $resource = $event['resource'] ?? [];
+            $paymentId = $resource['id'] ?? null;
+
+            if (!$paymentId) {
+                throw new Exception('Payment ID missing in webhook');
+            }
+
+            // Check if payment already recorded (prevent duplicate processing)
+            if (Payment::where('intent_id', $paymentId)->exists()) {
+                Log::info('PayPal payment already processed: ' . $paymentId);
+                DB::rollBack();
+                return;
+            }
+
+            // Get payer_id from resource
+            $payerId = $resource['payer']['payer_info']['payer_id'] ?? null;
+
+            if (!$payerId) {
+                throw new Exception('Payer ID missing in webhook');
+            }
+
+            // Execute the payment to capture funds
+            $executedPayment = $this->executePayment($paymentId, $payerId);
+
+            // Get transaction data from resource (before execution, structure is same)
+            $transactions = $resource['transactions'] ?? [];
+            $transaction = $transactions[0] ?? null;
+
+            if (!$transaction) {
+                throw new Exception('Transaction data missing in webhook');
+            }
+
+            // Parse custom data
+            $customData = $transaction['custom'] ?? null;
+            $metadata = $customData ? json_decode($customData, true) : [];
+            $orderId = $metadata['order_id'] ?? null;
+            $orderType = $metadata['order_type'] ?? 'order';
+            $userId = $metadata['user_id'] ?? null;
+
+            if (!$orderId || !$userId) {
+                throw new Exception('Order ID or User ID missing in metadata. Payment ID: ' . $paymentId);
+            }
+
+            // Get amount from transaction
+            $amountData = $transaction['amount'] ?? [];
+            $paymentAmount = $amountData['total'] ?? null;
+
+            // Resolve model
+            $modelClass = $orderType === 'addon' ? OrderAddon::class : Order::class;
+            $order = $modelClass::find((int) $orderId);
+
+            if (!$order) {
+                throw new Exception('Order not found: ' . $orderId);
+            }
+
+            if (!$paymentAmount) {
+                $paymentAmount = $order->amount;
+            }
+
+            // Save payment
+            Payment::create([
+                'intent_id' => $paymentId,
+                'user_id' => (int) $userId,
+                'paymentable_id' => (int) $orderId,
+                'paymentable_type' => $modelClass,
+                'paid_at' => now(),
+                'amount' => $paymentAmount,
+                'currency' => $amountData['currency'] ?? 'USD',
+                'status' => 'paid',
+            ]);
+
+            // Update order
+            $order->update([
+                'payment_status' => 'paid',
+            ]);
+
+            // Create invoice
+            $this->createInvoice((int) $orderId, $orderType, $paymentAmount, 'paid');
+
+            DB::commit();
+            Log::info('PayPalService::handlePaymentCreated Payment executed and recorded: ' . $paymentId);
+        } catch (Exception $e) {
+            DB::rollBack();
+            Log::error('PayPalService::handlePaymentCreated: ' . $e->getMessage());
+            throw $e;
+        }
+    }
+
+    /**
+     * Handle successful payment (PAYMENT.SALE.COMPLETED / PAYMENT.CAPTURE.COMPLETED).
      */
     protected function handlePaymentSuccess($event): void
     {
