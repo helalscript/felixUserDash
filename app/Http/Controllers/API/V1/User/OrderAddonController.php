@@ -39,6 +39,7 @@ class OrderAddonController extends Controller
         $validated = $request->validate([
             'order_id' => 'required|exists:orders,id',
             'addon_id' => 'required|exists:addons,id',
+            'coupon_code' => 'nullable|string',
         ]);
         try {
             $orderAddon = $this->orderAddonService->store($validated);

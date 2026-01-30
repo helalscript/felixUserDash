@@ -273,12 +273,13 @@ class StripeService
                 'payment_status' => 'paid',
             ]);
 
-            // Record coupon usage when payment completes (only for Order type with coupon)
-            if ($orderType === 'order' && $order instanceof Order && $order->coupon_id) {
+            // Record coupon usage when payment completes (Order or OrderAddon with coupon)
+            if ($order->coupon_id) {
                 CouponUsage::create([
                     'coupon_id' => $order->coupon_id,
                     'user_id' => $userId,
-                    'order_id' => $orderId,
+                    'order_id' => $orderType === 'order' ? $orderId : null,
+                    'order_addon_id' => $orderType === 'addon' ? $orderId : null,
                     'used_at' => now(),
                 ]);
                 $order->coupon?->updateStatus();

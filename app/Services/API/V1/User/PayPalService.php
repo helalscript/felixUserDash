@@ -216,12 +216,13 @@ class PayPalService
 
             $order->update(['payment_status' => 'paid']);
 
-            // Record coupon usage when payment completes (only for Order type with coupon)
-            if ($orderType === 'order' && $order instanceof Order && $order->coupon_id) {
+            // Record coupon usage when payment completes (Order or OrderAddon with coupon)
+            if ($order->coupon_id) {
                 CouponUsage::create([
                     'coupon_id' => $order->coupon_id,
                     'user_id' => (int) $userId,
-                    'order_id' => (int) $orderIdLocal,
+                    'order_id' => $orderType === 'order' ? (int) $orderIdLocal : null,
+                    'order_addon_id' => $orderType === 'addon' ? (int) $orderIdLocal : null,
                     'used_at' => now(),
                 ]);
                 $order->coupon?->updateStatus();
