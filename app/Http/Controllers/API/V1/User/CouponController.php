@@ -55,6 +55,14 @@ class CouponController extends Controller
                 );
             }
 
+            // Check coupon value must not exceed order value (for fixed/amount type)
+            if (!$coupon->canBeAppliedTo($validatedData['order_amount'])) {
+                return Helper::jsonErrorResponse(
+                    'Coupon value cannot exceed order value.',
+                    422
+                );
+            }
+
             // Calculate discount
             $originalAmount = $validatedData['order_amount'];
             $discountAmount = $coupon->calculateDiscount($originalAmount);

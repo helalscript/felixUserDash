@@ -100,12 +100,12 @@ class OrderService
                     $coupon->updateStatus();
                     $coupon->refresh();
 
-                    // Validate coupon
-                    if ($coupon->isValid() && $originalPrice >= $coupon->min_order_value) {
+                    // Validate coupon (min order value, coupon value must not exceed order value)
+                    if ($coupon->isValid() && $originalPrice >= $coupon->min_order_value && $coupon->canBeAppliedTo($originalPrice)) {
                         $discountAmount = $coupon->calculateDiscount($originalPrice);
                         $finalAmount = $originalPrice - $discountAmount;
                     } else {
-                        throw new Exception('Invalid coupon or order amount does not meet minimum requirement.');
+                        throw new Exception('Invalid coupon, order amount does not meet minimum requirement, or coupon value exceeds order value.');
                     }
                 } else {
                     throw new Exception('Coupon code not found.');

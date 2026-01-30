@@ -85,11 +85,11 @@ class OrderAddonService
                     $coupon->updateStatus();
                     $coupon->refresh();
 
-                    if ($coupon->isValid() && $originalPrice >= $coupon->min_order_value) {
+                    if ($coupon->isValid() && $originalPrice >= $coupon->min_order_value && $coupon->canBeAppliedTo($originalPrice)) {
                         $discountAmount = $coupon->calculateDiscount($originalPrice);
                         $finalAmount = $originalPrice - $discountAmount;
                     } else {
-                        throw new Exception('Invalid coupon or addon amount does not meet minimum requirement.');
+                        throw new Exception('Invalid coupon, addon amount does not meet minimum requirement, or coupon value exceeds addon value.');
                     }
                 } else {
                     throw new Exception('Coupon code not found.');
