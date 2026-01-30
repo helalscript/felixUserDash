@@ -32,6 +32,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'role_check' => \App\Http\Middleware\RoleCheckMiddleWare::class,
             'is_admin' => \App\Http\Middleware\IsAdmin::class,
             'is_user' => \App\Http\Middleware\IsUser::class,
+            'check_password_reset' => \App\Http\Middleware\CheckPasswordReset::class,
         ]);
     })
     ->withExceptions(function ($exceptions) {
