@@ -2,7 +2,10 @@
 
 namespace App\Services\API\V1\Admin\Coupon;
 
+use App\Models\Addon;
 use App\Models\Coupon;
+use App\Models\CouponCheckoutLink;
+use App\Models\Package;
 use App\Models\User;
 use Carbon\Carbon;
 use Exception;
@@ -160,15 +163,88 @@ class CouponService
     public function show(int $id)
     {
         try {
-            $coupon = Coupon::with('users')
+            $coupon = Coupon::with([
+                'users',
+                'checkoutLinks' => fn ($q) => $q->with(['user:id,name,email', 'package:id,title,subtitle,price', 'addon:id,title,sub_title,price']),
+                'usages' => function ($query) {
+                    $query->with([
+                        'user:id,name,email,phone',
+                        'order' => fn ($q) => $q->with('orderable'),
+                        'orderAddon' => fn ($q) => $q->with(['addon', 'order.orderable']),
+                    ])->orderBy('used_at', 'desc');
+                },
+            ])
                 ->withCount('usages')
                 ->find($id);
+
             if (! $coupon) {
                 throw new Exception('Coupon not found.');
             }
 
             $coupon->updateStatus();
             $coupon->refresh();
+
+            // Add user and package/addon info to each usage for the details page
+            $coupon->setRelation('usages', $coupon->usages->map(function ($usage) {
+                $usageData = [
+                    'id' => $usage->id,
+                    'coupon_id' => $usage->coupon_id,
+                    'user_id' => $usage->user_id,
+                    'order_id' => $usage->order_id,
+                    'order_addon_id' => $usage->order_addon_id,
+                    'used_at' => $usage->used_at,
+                    'user' => null,
+                    'package' => null,
+                    'addon' => null,
+                    'order_number' => null,
+                    'amount' => null,
+                ];
+
+                if ($usage->relationLoaded('user') && $usage->user) {
+                    $usageData['user'] = [
+                        'id' => $usage->user->id,
+                        'name' => $usage->user->name,
+                        'email' => $usage->user->email,
+                        'phone' => $usage->user->phone ?? null,
+                    ];
+                }
+
+                if ($usage->order_id && $usage->relationLoaded('order') && $usage->order) {
+                    $order = $usage->order;
+                    $usageData['order_number'] = $order->order_number;
+                    $usageData['amount'] = $order->amount;
+                    if ($order->relationLoaded('orderable') && $order->orderable) {
+                        $usageData['package'] = [
+                            'id' => $order->orderable->id,
+                            'title' => $order->orderable->title ?? null,
+                            'subtitle' => $order->orderable->subtitle ?? null,
+                            'price' => $order->orderable->price ?? null,
+                        ];
+                    }
+                }
+
+                if ($usage->order_addon_id && $usage->relationLoaded('orderAddon') && $usage->orderAddon) {
+                    $orderAddon = $usage->orderAddon;
+                    $usageData['amount'] = $orderAddon->amount;
+                    $usageData['addon'] = [
+                        'id' => $orderAddon->addon?->id ?? $orderAddon->addon_id,
+                        'title' => $orderAddon->addon?->title ?? $orderAddon->name,
+                        'sub_title' => $orderAddon->addon?->sub_title ?? $orderAddon->sub_title ?? null,
+                        'price' => $orderAddon->addon?->price ?? $orderAddon->amount ?? null,
+                    ];
+                    if ($orderAddon->relationLoaded('order') && $orderAddon->order?->relationLoaded('orderable') && $orderAddon->order->orderable) {
+                        $usageData['package'] = [
+                            'id' => $orderAddon->order->orderable->id,
+                            'title' => $orderAddon->order->orderable->title ?? null,
+                            'subtitle' => $orderAddon->order->orderable->subtitle ?? null,
+                            'price' => $orderAddon->order->orderable->price ?? null,
+                        ];
+                        $usageData['order_number'] = $orderAddon->order->order_number;
+                    }
+                }
+
+                return $usageData;
+            }));
 
             return $coupon;
         } catch (Exception $e) {
@@ -291,12 +367,100 @@ class CouponService
         $users = User::whereIn('id', $userIds)->get();
 
         foreach ($users as $user) {
-            $checkoutLink = url('/checkout?coupon='.$coupon->code.'&user='.$user->id);
+            $type = $coupon->type === 'package' ? 'package' : 'addon';
+            $checkoutLink = config('services.frontend_url').'/'.$type.'?coupon='.$coupon->code.'&user='.$user->id;
 
             $coupon->users()->syncWithoutDetaching([
                 $user->id => ['checkout_link' => $checkoutLink],
             ]);
         }
+    }
+
+    /**
+     * Generate a checkout link for a specific user + package/addon + coupon.
+     * User clicks the link and goes directly to checkout with coupon applied.
+     *
+     * @param  int|null  $packageId
+     * @param  int|null  $addonId
+     * @return CouponCheckoutLink
+     */
+    public function generateCheckoutLink(int $couponId, int $userId, ?int $packageId = null, ?int $addonId = null): CouponCheckoutLink
+    {
+        if (! $packageId && ! $addonId) {
+            throw new Exception('Either package_id or addon_id is required.');
+        }
+        if ($packageId && $addonId) {
+            throw new Exception('Provide either package_id or addon_id, not both.');
+        }
+
+        $coupon = Coupon::find($couponId);
+        if (! $coupon) {
+            throw new Exception('Coupon not found.');
+        }
+
+        $user = User::find($userId);
+        if (! $user) {
+            throw new Exception('User not found.');
+        }
+
+        $price = 0;
+        $params = ['coupon' => $coupon->code, 'user' => $userId];
+
+        if ($packageId) {
+            $package = Package::find($packageId);
+            if (! $package) {
+                throw new Exception('Package not found.');
+            }
+            $price = (float) $package->price;
+            $params['package'] = $packageId;
+        } elseif ($addonId) {
+            $addon = Addon::find($addonId);
+            if (! $addon) {
+                throw new Exception('Addon not found.');
+            }
+            $price = (float) $addon->price;
+            $params['addon'] = $addonId;
+        }
+
+        $coupon->updateStatus();
+        $coupon->refresh();
+        if (! $coupon->isValid()) {
+            throw new Exception('Coupon is not valid (expired, exhausted, or inactive).');
+        }
+
+        if ($price < (float) $coupon->min_order_value) {
+            $product = $packageId ? 'Package' : 'Addon';
+            throw new Exception($product.' price does not meet minimum order value of $'.number_format($coupon->min_order_value, 2));
+        }
+
+        // Ensure user is assigned to coupon
+        $coupon->users()->syncWithoutDetaching([$userId]);
+        //check type is order or addon
+        $type = $packageId ? 'package' : 'addon';
+        $checkoutLink = config('services.frontend_url').'/'.$type.'?'.http_build_query($params);
+
+        return CouponCheckoutLink::updateOrCreate(
+            [
+                'coupon_id' => $couponId,
+                'user_id' => $userId,
+                'package_id' => $packageId,
+                'addon_id' => $addonId,
+            ],
+            ['checkout_link' => $checkoutLink]
+        );
+    }
+
+    /**
+     * Get all checkout links for a coupon.
+     *
+     * @return \Illuminate\Database\Eloquent\Collection
+     */
+    public function getCheckoutLinks(int $couponId)
+    {
+        return CouponCheckoutLink::where('coupon_id', $couponId)
+            ->with(['user:id,name,email', 'package:id,title,price', 'addon:id,title,price'])
+            ->orderBy('created_at', 'desc')
+            ->get();
     }
 
     /**

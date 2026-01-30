@@ -14,6 +14,7 @@ use App\Http\Controllers\API\V1\Auth\RegisterController;
 use App\Http\Controllers\API\V1\Auth\ResetPasswordController;
 use App\Http\Controllers\API\V1\Auth\SocialLoginController;
 use App\Http\Controllers\API\V1\Auth\UserController;
+use App\Http\Controllers\API\V1\Public\CheckoutLinkController;
 use App\Http\Controllers\API\V1\Public\GeneralSettingController;
 use App\Http\Controllers\API\V1\User\AddonController as UserAddonController;
 use App\Http\Controllers\API\V1\User\CouponController as UserCouponController;
@@ -118,11 +119,14 @@ Route::group(['middleware' => ['auth:api', 'check_password_reset', 'is_admin'], 
     Route::post('orders/file-upload/{id}', [AdminOrderController::class, 'fileUpload']);
 
     // coupons
+    Route::post('coupons/generate-checkout-link/{id}', [AdminCouponController::class, 'generateCheckoutLink']);
+    Route::get('coupons/checkout-links/{id}', [AdminCouponController::class, 'getCheckoutLinks']);
     Route::apiResource('coupons', AdminCouponController::class);
 });
 
 // this is for public
 Route::get('system-info', [GeneralSettingController::class, 'getSystemInfo']);
+Route::get('checkout-link/validate', [CheckoutLinkController::class, 'validate']);
 Route::get('dynamic-pages', [GeneralSettingController::class, 'getDynamicPages']);
 Route::get('dynamic-pages/{page_slug}', [GeneralSettingController::class, 'showDaynamicPage']);
 Route::apiResource('packages', UserPackageController::class)->only(['index', 'show']);
