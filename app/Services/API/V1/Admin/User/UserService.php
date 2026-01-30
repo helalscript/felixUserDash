@@ -58,7 +58,9 @@ class UserService
                 ->when($request->filled('role'), function ($query) use ($request) {
                     $query->where('role', $request->role);
                 })
-                ->withCount('orders')
+                ->withCount(['orders'=> function ($query) {
+                    $query->where('payment_status', 'paid');
+                }])
                 ->orderBy('created_at', 'desc')
                 ->paginate($perPage);
 
@@ -108,7 +110,10 @@ class UserService
             $user = User::select('id', 'name', 'email', 'user_name', 'phone', 'avatar', 'role', 'created_at', 'last_login_at', 'login_count', 'last_login_ip', 'location', 'gender', 'brithdate', 'timezone', 'status')
                 ->where('email_verified_at', '!=', null)
                 ->where('role', '!=', 'admin')
-                ->withCount('orders')
+                // ->withCount('orders')
+                ->withCount(['orders'=> function ($query) {
+                    $query->where('payment_status', 'paid');
+                }])
                 ->findOrFail($id);
 
             return $user;
