@@ -5,7 +5,6 @@ namespace App\Services\API\V1\User;
 use App\Helpers\Helper;
 use App\Models\Addon;
 use App\Models\Coupon;
-use App\Models\CouponUsage;
 use App\Models\Order;
 use App\Models\OrderDetail;
 use App\Models\Package;
@@ -125,21 +124,12 @@ class OrderService
                 'original_amount' => $originalPrice,
                 'discount_amount' => $discountAmount,
                 'coupon_id' => $coupon ? $coupon->id : null,
+                'coupon_code' => $coupon ? $coupon->code : null,
+                'coupon_value' => $coupon ? $coupon->value : null,
                 'status' => 'pending',
             ]);
 
-            // Record coupon usage if coupon was applied
-            if ($coupon) {
-                CouponUsage::create([
-                    'coupon_id' => $coupon->id,
-                    'user_id' => $this->user->id,
-                    'order_id' => $order->id,
-                    'used_at' => now(),
-                ]);
-
-                // Update coupon status
-                $coupon->updateStatus();
-            }
+            // Coupon usage is recorded only when payment completes (in StripeService/PayPalService)
 
             // file upload
             if (isset($validatedData['attachment']) && ! empty($validatedData['attachment'])) {
