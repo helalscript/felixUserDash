@@ -2,7 +2,10 @@
 
 namespace App\Services\API\V1\Admin\Coupon;
 
+use App\Models\Addon;
 use App\Models\Coupon;
+use App\Models\CouponCheckoutLink;
+use App\Models\Package;
 use App\Models\User;
 use Carbon\Carbon;
 use Exception;
@@ -162,6 +165,7 @@ class CouponService
         try {
             $coupon = Coupon::with([
                 'users',
+                'checkoutLinks' => fn ($q) => $q->with(['user:id,name,email', 'package:id,title,subtitle,price', 'addon:id,title,sub_title,price']),
                 'usages' => function ($query) {
                     $query->with([
                         'user:id,name,email,phone',
@@ -363,12 +367,100 @@ class CouponService
         $users = User::whereIn('id', $userIds)->get();
 
         foreach ($users as $user) {
-            $checkoutLink = url('/checkout?coupon='.$coupon->code.'&user='.$user->id);
+            $type = $coupon->type === 'package' ? 'package' : 'addon';
+            $checkoutLink = config('services.frontend_url').'/'.$type.'?coupon='.$coupon->code.'&user='.$user->id;
 
             $coupon->users()->syncWithoutDetaching([
                 $user->id => ['checkout_link' => $checkoutLink],
             ]);
         }
+    }
+
+    /**
+     * Generate a checkout link for a specific user + package/addon + coupon.
+     * User clicks the link and goes directly to checkout with coupon applied.
+     *
+     * @param  int|null  $packageId
+     * @param  int|null  $addonId
+     * @return CouponCheckoutLink
+     */
+    public function generateCheckoutLink(int $couponId, int $userId, ?int $packageId = null, ?int $addonId = null): CouponCheckoutLink
+    {
+        if (! $packageId && ! $addonId) {
+            throw new Exception('Either package_id or addon_id is required.');
+        }
+        if ($packageId && $addonId) {
+            throw new Exception('Provide either package_id or addon_id, not both.');
+        }
+
+        $coupon = Coupon::find($couponId);
+        if (! $coupon) {
+            throw new Exception('Coupon not found.');
+        }
+
+        $user = User::find($userId);
+        if (! $user) {
+            throw new Exception('User not found.');
+        }
+
+        $price = 0;
+        $params = ['coupon' => $coupon->code, 'user' => $userId];
+
+        if ($packageId) {
+            $package = Package::find($packageId);
+            if (! $package) {
+                throw new Exception('Package not found.');
+            }
+            $price = (float) $package->price;
+            $params['package'] = $packageId;
+        } elseif ($addonId) {
+            $addon = Addon::find($addonId);
+            if (! $addon) {
+                throw new Exception('Addon not found.');
+            }
+            $price = (float) $addon->price;
+            $params['addon'] = $addonId;
+        }
+
+        $coupon->updateStatus();
+        $coupon->refresh();
+        if (! $coupon->isValid()) {
+            throw new Exception('Coupon is not valid (expired, exhausted, or inactive).');
+        }
+
+        if ($price < (float) $coupon->min_order_value) {
+            $product = $packageId ? 'Package' : 'Addon';
+            throw new Exception($product.' price does not meet minimum order value of $'.number_format($coupon->min_order_value, 2));
+        }
+
+        // Ensure user is assigned to coupon
+        $coupon->users()->syncWithoutDetaching([$userId]);
+        //check type is order or addon
+        $type = $packageId ? 'package' : 'addon';
+        $checkoutLink = config('services.frontend_url').'/'.$type.'?'.http_build_query($params);
+
+        return CouponCheckoutLink::updateOrCreate(
+            [
+                'coupon_id' => $couponId,
+                'user_id' => $userId,
+                'package_id' => $packageId,
+                'addon_id' => $addonId,
+            ],
+            ['checkout_link' => $checkoutLink]
+        );
+    }
+
+    /**
+     * Get all checkout links for a coupon.
+     *
+     * @return \Illuminate\Database\Eloquent\Collection
+     */
+    public function getCheckoutLinks(int $couponId)
+    {
+        return CouponCheckoutLink::where('coupon_id', $couponId)
+            ->with(['user:id,name,email', 'package:id,title,price', 'addon:id,title,price'])
+            ->orderBy('created_at', 'desc')
+            ->get();
     }
 
     /**

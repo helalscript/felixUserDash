@@ -139,5 +139,51 @@ class CouponController extends Controller
             return Helper::jsonErrorResponse($e->getMessage(), 500);
         }
     }
+
+    /**
+     * Generate a checkout link for user + package/addon + coupon.
+     * User clicks link and goes directly to checkout with coupon applied.
+     */
+    public function generateCheckoutLink(Request $request, string $id)
+    {
+        $validatedData = $request->validate([
+            'user_id' => 'required|exists:users,id',
+            'package_id' => 'required_without:addon_id|nullable|exists:packages,id',
+            'addon_id' => 'required_without:package_id|nullable|exists:addons,id',
+        ], [
+            'package_id.required_without' => 'Either package_id or addon_id is required.',
+            'addon_id.required_without' => 'Either package_id or addon_id is required.',
+        ]);
+        try {
+            $link = $this->couponService->generateCheckoutLink(
+                (int) $id,
+                (int) $validatedData['user_id'],
+                isset($validatedData['package_id']) ? (int) $validatedData['package_id'] : null,
+                isset($validatedData['addon_id']) ? (int) $validatedData['addon_id'] : null
+            );
+
+            return Helper::jsonResponse(true, 'Checkout link generated successfully', 200, $link->load(['user:id,name,email', 'package:id,title,price', 'addon:id,title,price']));
+        } catch (Exception $e) {
+            Log::error('Admin\\CouponController::generateCheckoutLink'.$e->getMessage());
+
+            return Helper::jsonErrorResponse($e->getMessage(), 422);
+        }
+    }
+
+    /**
+     * Get all checkout links for a coupon.
+     */
+    public function getCheckoutLinks(string $id)
+    {
+        try {
+            $links = $this->couponService->getCheckoutLinks((int) $id);
+
+            return Helper::jsonResponse(true, 'Checkout links fetched successfully', 200, $links);
+        } catch (Exception $e) {
+            Log::error('Admin\\CouponController::getCheckoutLinks'.$e->getMessage());
+
+            return Helper::jsonErrorResponse($e->getMessage(), 500);
+        }
+    }
 }
 

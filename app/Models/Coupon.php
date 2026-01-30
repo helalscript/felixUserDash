@@ -59,6 +59,14 @@ class Coupon extends Model
     }
 
     /**
+     * Get the checkout links (user + package specific).
+     */
+    public function checkoutLinks()
+    {
+        return $this->hasMany(CouponCheckoutLink::class);
+    }
+
+    /**
      * Safely parse date and time into Carbon instance.
      */
     private function parseDateTime($date, $time): ?Carbon
