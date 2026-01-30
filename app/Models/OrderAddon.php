@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+
 use Illuminate\Database\Eloquent\Model;
 
 class OrderAddon extends Model
@@ -24,6 +25,11 @@ class OrderAddon extends Model
         'sub_title',
         'description',
         'amount',
+        'coupon_id',
+        'coupon_code',
+        'coupon_value',
+        'original_amount',
+        'discount_amount',
         'status',
         'payment_status',
     ];
@@ -41,6 +47,10 @@ class OrderAddon extends Model
         'sub_title' => 'string',
         'description' => 'string',
         'amount' => 'decimal:2',
+        'coupon_id' => 'integer',
+        'coupon_value' => 'decimal:2',
+        'original_amount' => 'decimal:2',
+        'discount_amount' => 'decimal:2',
         'status' => 'string',
         'payment_status' => 'string',
         'created_at' => 'datetime',
@@ -55,6 +65,14 @@ class OrderAddon extends Model
     public function addon()
     {
         return $this->belongsTo(Addon::class);
+    }
+
+    /**
+     * Get the coupon used for this order addon.
+     */
+    public function coupon()
+    {
+        return $this->belongsTo(Coupon::class);
     }
     public function payments() {
         return $this->morphMany(Payment::class, 'paymentable');

@@ -42,7 +42,7 @@ Route::group(['middleware' => ['guest:api']], function ($router) {
     Route::post('/social-login', [SocialLoginController::class, 'SocialLogin']);
 });
 
-Route::group(['middleware' => 'auth:api'], function ($router) {
+Route::group(['middleware' => ['auth:api', 'check_password_reset']], function ($router) {
     Route::get('/refresh-token', [LoginController::class, 'refreshToken']);
     Route::post('/logout', [LogoutController::class, 'logout']);
     Route::get('/me', [UserController::class, 'me']);
@@ -51,7 +51,7 @@ Route::group(['middleware' => 'auth:api'], function ($router) {
 });
 
 // this is for user
-Route::group(['middleware' => ['auth:api', 'is_user']], function ($router) {
+Route::group(['middleware' => ['auth:api', 'check_password_reset', 'is_user']], function ($router) {
     // addons
     Route::apiResource('addons', UserAddonController::class)->only(['index', 'show']);
 
@@ -86,7 +86,7 @@ Route::post('payments/stripe/handle-webhook', [UserPaymentController::class, 'ha
 Route::post('payments/paypal/handle-webhook', [UserPaymentController::class, 'handlePaypalWebhook']);
 
 // this is for admin
-Route::group(['middleware' => ['auth:api', 'is_admin'], 'prefix' => 'admin','as' => 'admin.'], function ($router) {
+Route::group(['middleware' => ['auth:api', 'check_password_reset', 'is_admin'], 'prefix' => 'admin','as' => 'admin.'], function ($router) {
     // users
     Route::apiResource('users', AdminUserController::class);
     Route::post('users/reset-password/{id}', [AdminUserController::class, 'resetPassword']);

@@ -129,6 +129,7 @@ class UserService
             $user = User::where('email_verified_at', '!=', null)->findOrFail($id);
             if (! empty($validatedData['password'])) {
                 $validatedData['password'] = bcrypt($validatedData['password']);
+                $validatedData['password_changed_at'] = now();
             } elseif (array_key_exists('password', $validatedData)) {
                 unset($validatedData['password']);
             }
@@ -140,7 +141,13 @@ class UserService
             } else {
                 $validatedData['avatar'] = $user->avatar;
             }
+
             $user->update($validatedData);
+
+            // If password was changed, revoke all web sessions (forces re-login)
+            if (isset($validatedData['password_changed_at'])) {
+                DB::table('sessions')->where('user_id', $user->id)->delete();
+            }
 
             return $user;
         } catch (Exception $e) {
@@ -173,7 +180,12 @@ class UserService
             DB::beginTransaction();
             $user = User::where('email_verified_at', '!=', null)->findOrFail($id);
             $user->password = bcrypt($password);
+            $user->password_changed_at = now();
             $user->save();
+
+            // Revoke all web sessions for this user (forces re-login)
+            DB::table('sessions')->where('user_id', $user->id)->delete();
+
             DB::commit();
 
             return $user;

@@ -118,6 +118,19 @@ class Coupon extends Model
     }
 
     /**
+     * Check if coupon can be applied to the given order amount.
+     * Coupon value must not exceed order value (for fixed/amount type).
+     */
+    public function canBeAppliedTo(float $orderAmount): bool
+    {
+        if ($this->type !== 'percentage' && (float) $this->value > $orderAmount) {
+            return false; // Fixed coupon value cannot exceed order amount
+        }
+
+        return true;
+    }
+
+    /**
      * Calculate discount amount for a given order amount.
      */
     public function calculateDiscount(float $orderAmount): float

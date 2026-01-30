@@ -31,6 +31,7 @@ class User extends Authenticatable implements JWTSubject
         'brithdate',
         'gender',
         'password',
+        'password_changed_at',
         'otp',
         'is_otp_verified',
         'otp_expires_at',
@@ -55,6 +56,7 @@ class User extends Authenticatable implements JWTSubject
      */
     protected $hidden = [
         'password',
+        'password_changed_at',
         'otp',
         'otp_expires_at',
         'email_verified_at',
@@ -83,6 +85,7 @@ class User extends Authenticatable implements JWTSubject
             'last_seen' => 'datetime',
             'last_login_at' => 'datetime',
             'password' => 'hashed',
+            'password_changed_at' => 'datetime',
             'created_at' => 'datetime',
             'updated_at' => 'datetime',
             'deleted_at' => 'datetime',
@@ -124,7 +127,9 @@ class User extends Authenticatable implements JWTSubject
      */
     public function getJWTCustomClaims()
     {
-        return [];
+        return [
+            'password_changed_at' => $this->password_changed_at?->timestamp,
+        ];
     }
 
     public function orders()

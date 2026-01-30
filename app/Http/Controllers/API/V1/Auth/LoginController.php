@@ -31,15 +31,29 @@ class LoginController extends Controller
         ]);
         try {
             if (filter_var(isset($validateData['email']) ? $validateData['email'] : null, FILTER_VALIDATE_EMAIL) !== false) {
-                $user = User::where('email', $validateData['email'])->first();
+                $user = User::withTrashed()->where('email', $validateData['email'])->first();
                 if (empty($user)) {
                     return Helper::jsonErrorResponse('No account found with this email.', 422, ['email' => 'No account found with this email.']);
                 }
+                if ($user->trashed()) {
+                    return Helper::jsonErrorResponse(
+                        'Your account has been deactivated by the administrator. If you believe this is a mistake or need further assistance, please contact support.',
+                        403,
+                        ['email' => 'Your account has been deactivated by the administrator.']
+                    );
+                }
             }
             if (isset($validateData['user_name'])) {
-                $user = User::where('user_name', $validateData['user_name'])->first();
+                $user = User::withTrashed()->where('user_name', $validateData['user_name'])->first();
                 if (empty($user)) {
                     return Helper::jsonErrorResponse('No account found with this user name.', 422, ['user_name' => 'No account found with this user name.']);
+                }
+                if ($user->trashed()) {
+                    return Helper::jsonErrorResponse(
+                        'Your account has been deactivated by the administrator. If you believe this is a mistake or need further assistance, please contact support.',
+                        403,
+                        ['user_name' => 'Your account has been deactivated by the administrator.']
+                    );
                 }
             }
             if ($user && empty($user->email_verified_at)) {

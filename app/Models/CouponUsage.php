@@ -13,6 +13,7 @@ class CouponUsage extends Model
         'coupon_id',
         'user_id',
         'order_id',
+        'order_addon_id',
         'used_at',
     ];
 
@@ -42,5 +43,13 @@ class CouponUsage extends Model
     public function order()
     {
         return $this->belongsTo(Order::class);
+    }
+
+    /**
+     * Get the order addon that used the coupon.
+     */
+    public function orderAddon()
+    {
+        return $this->belongsTo(OrderAddon::class);
     }
 }
