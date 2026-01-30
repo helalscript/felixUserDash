@@ -160,15 +160,87 @@ class CouponService
     public function show(int $id)
     {
         try {
-            $coupon = Coupon::with('users')
+            $coupon = Coupon::with([
+                'users',
+                'usages' => function ($query) {
+                    $query->with([
+                        'user:id,name,email,phone',
+                        'order' => fn ($q) => $q->with('orderable'),
+                        'orderAddon' => fn ($q) => $q->with(['addon', 'order.orderable']),
+                    ])->orderBy('used_at', 'desc');
+                },
+            ])
                 ->withCount('usages')
                 ->find($id);
+
             if (! $coupon) {
                 throw new Exception('Coupon not found.');
             }
 
             $coupon->updateStatus();
             $coupon->refresh();
+
+            // Add user and package/addon info to each usage for the details page
+            $coupon->setRelation('usages', $coupon->usages->map(function ($usage) {
+                $usageData = [
+                    'id' => $usage->id,
+                    'coupon_id' => $usage->coupon_id,
+                    'user_id' => $usage->user_id,
+                    'order_id' => $usage->order_id,
+                    'order_addon_id' => $usage->order_addon_id,
+                    'used_at' => $usage->used_at,
+                    'user' => null,
+                    'package' => null,
+                    'addon' => null,
+                    'order_number' => null,
+                    'amount' => null,
+                ];
+
+                if ($usage->relationLoaded('user') && $usage->user) {
+                    $usageData['user'] = [
+                        'id' => $usage->user->id,
+                        'name' => $usage->user->name,
+                        'email' => $usage->user->email,
+                        'phone' => $usage->user->phone ?? null,
+                    ];
+                }
+
+                if ($usage->order_id && $usage->relationLoaded('order') && $usage->order) {
+                    $order = $usage->order;
+                    $usageData['order_number'] = $order->order_number;
+                    $usageData['amount'] = $order->amount;
+                    if ($order->relationLoaded('orderable') && $order->orderable) {
+                        $usageData['package'] = [
+                            'id' => $order->orderable->id,
+                            'title' => $order->orderable->title ?? null,
+                            'subtitle' => $order->orderable->subtitle ?? null,
+                            'price' => $order->orderable->price ?? null,
+                        ];
+                    }
+                }
+
+                if ($usage->order_addon_id && $usage->relationLoaded('orderAddon') && $usage->orderAddon) {
+                    $orderAddon = $usage->orderAddon;
+                    $usageData['amount'] = $orderAddon->amount;
+                    $usageData['addon'] = [
+                        'id' => $orderAddon->addon?->id ?? $orderAddon->addon_id,
+                        'title' => $orderAddon->addon?->title ?? $orderAddon->name,
+                        'sub_title' => $orderAddon->addon?->sub_title ?? $orderAddon->sub_title ?? null,
+                        'price' => $orderAddon->addon?->price ?? $orderAddon->amount ?? null,
+                    ];
+                    if ($orderAddon->relationLoaded('order') && $orderAddon->order?->relationLoaded('orderable') && $orderAddon->order->orderable) {
+                        $usageData['package'] = [
+                            'id' => $orderAddon->order->orderable->id,
+                            'title' => $orderAddon->order->orderable->title ?? null,
+                            'subtitle' => $orderAddon->order->orderable->subtitle ?? null,
+                            'price' => $orderAddon->order->orderable->price ?? null,
+                        ];
+                        $usageData['order_number'] = $orderAddon->order->order_number;
+                    }
+                }
+
+                return $usageData;
+            }));
 
             return $coupon;
         } catch (Exception $e) {
