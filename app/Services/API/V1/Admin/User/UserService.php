@@ -4,6 +4,7 @@ namespace App\Services\API\V1\Admin\User;
 
 use App\Helpers\Helper;
 use App\Models\User;
+use Carbon\Carbon;
 use Exception;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -39,7 +40,8 @@ class UserService
                 'last_login_at',
                 'login_count',
                 'last_login_ip',
-                'location'
+                'location',
+                'timezone'
             )
                 ->where('role', '!=', 'admin')
                 ->where('email_verified_at', '!=', null)
@@ -63,6 +65,8 @@ class UserService
                 }])
                 ->orderBy('created_at', 'desc')
                 ->paginate($perPage);
+
+            $users->getCollection()->transform(fn ($user) => $this->transformLastLoginAt($user));
 
             return $users;
         } catch (Exception $e) {
@@ -116,7 +120,7 @@ class UserService
                 }])
                 ->findOrFail($id);
 
-            return $user;
+            return $this->transformLastLoginAt($user);
         } catch (Exception $e) {
             Log::error('UserService::show'.$e->getMessage());
             throw $e;
@@ -200,5 +204,26 @@ class UserService
             Log::error('UserService::resetPassword'.$e->getMessage());
             throw $e;
         }
+    }
+
+    /**
+     * Convert last_login_at to user's timezone before returning.
+     * If user has no timezone, return as-is (app default).
+     *
+     * @param  \App\Models\User  $user
+     * @return \App\Models\User
+     */
+    private function transformLastLoginAt(User $user): User
+    {
+        if ($user->last_login_at && $user->timezone) {
+            try {
+                $user->last_login_at = Carbon::parse($user->last_login_at)
+                    ->timezone($user->timezone);
+            } catch (\Exception $e) {
+                Log::warning('UserService::transformLastLoginAt invalid timezone: '.$user->timezone);
+            }
+        }
+
+        return $user;
     }
 }
