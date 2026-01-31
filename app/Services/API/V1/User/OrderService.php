@@ -67,7 +67,7 @@ class OrderService
                 $query->where('start_date', '<=', $dateTo);
             }
 
-            $orders = $query->paginate($perPage);
+            $orders = $query->latest()->paginate($perPage);
 
             return $orders;
         } catch (Exception $e) {

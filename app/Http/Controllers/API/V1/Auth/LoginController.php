@@ -37,7 +37,7 @@ class LoginController extends Controller
                 }
                 if ($user->trashed()) {
                     return Helper::jsonErrorResponse(
-                        'Your account has been deactivated by the administrator. If you believe this is a mistake or need further assistance, please contact support.',
+                        'Your account has been deactivated. Please contact support.',
                         403,
                         ['email' => 'Your account has been deactivated by the administrator.']
                     );
@@ -50,7 +50,7 @@ class LoginController extends Controller
                 }
                 if ($user->trashed()) {
                     return Helper::jsonErrorResponse(
-                        'Your account has been deactivated by the administrator. If you believe this is a mistake or need further assistance, please contact support.',
+                        'Your account has been deactivated. Please contact support.',
                         403,
                         ['user_name' => 'Your account has been deactivated by the administrator.']
                     );

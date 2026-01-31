@@ -41,7 +41,8 @@ class UserService
                 'login_count',
                 'last_login_ip',
                 'location',
-                'timezone'
+                'timezone',
+                'last_seen'
             )
                 ->where('role', '!=', 'admin')
                 ->where('email_verified_at', '!=', null)
@@ -60,7 +61,7 @@ class UserService
                 ->when($request->filled('role'), function ($query) use ($request) {
                     $query->where('role', $request->role);
                 })
-                ->withCount(['orders'=> function ($query) {
+                ->withCount(['orders' => function ($query) {
                     $query->where('payment_status', 'paid');
                 }])
                 ->orderBy('created_at', 'desc')
@@ -111,16 +112,17 @@ class UserService
     public function show(int $id)
     {
         try {
-            $user = User::select('id', 'name', 'email', 'user_name', 'phone', 'avatar', 'role', 'created_at', 'last_login_at', 'login_count', 'last_login_ip', 'location', 'gender', 'brithdate', 'timezone', 'status')
+            $user = User::select('id', 'name', 'email', 'user_name', 'phone', 'avatar', 'role', 'created_at', 'last_login_at', 'login_count', 'last_login_ip', 'last_seen', 'location', 'gender', 'brithdate', 'timezone', 'status')
                 ->where('email_verified_at', '!=', null)
                 ->where('role', '!=', 'admin')
                 // ->withCount('orders')
-                ->withCount(['orders'=> function ($query) {
+                ->withCount(['orders' => function ($query) {
                     $query->where('payment_status', 'paid');
                 }])
                 ->findOrFail($id);
+            $user = $this->transformLastLoginAt($user);
 
-            return $this->transformLastLoginAt($user);
+            return $user;
         } catch (Exception $e) {
             Log::error('UserService::show'.$e->getMessage());
             throw $e;
@@ -209,16 +211,19 @@ class UserService
     /**
      * Convert last_login_at to user's timezone before returning.
      * If user has no timezone, return as-is (app default).
-     *
-     * @param  \App\Models\User  $user
-     * @return \App\Models\User
      */
     private function transformLastLoginAt(User $user): User
     {
+
+        if ($user->last_seen) {
+            $user->is_online = $user->last_seen ? Carbon::parse($user->last_seen)->gte(now()->subMinutes(2)) : false;
+        }
+
         if ($user->last_login_at && $user->timezone) {
             try {
                 $user->last_login_at = Carbon::parse($user->last_login_at)
                     ->timezone($user->timezone);
+
             } catch (\Exception $e) {
                 Log::warning('UserService::transformLastLoginAt invalid timezone: '.$user->timezone);
             }

@@ -58,6 +58,11 @@ class CouponController extends Controller
             return Helper::jsonErrorResponse('Percentage value cannot exceed 100%', 422);
         }
 
+        // For fixed amount: discount value must not exceed minimum order value
+        if ($validatedData['type'] === 'amount' && (float) $validatedData['value'] > (float) $validatedData['min_order_value']) {
+            return Helper::jsonErrorResponse('Discount value cannot exceed minimum order value.', 422);
+        }
+
         try {
             $coupon = $this->couponService->store($validatedData);
 
@@ -111,6 +116,17 @@ class CouponController extends Controller
         // Additional validation for percentage type
         if (isset($validatedData['type']) && $validatedData['type'] === 'percentage' && isset($validatedData['value']) && $validatedData['value'] > 100) {
             return Helper::jsonErrorResponse('Percentage value cannot exceed 100%', 422);
+        }
+
+        // For fixed amount: discount value must not exceed minimum order value
+        $coupon = \App\Models\Coupon::find($id);
+        if ($coupon) {
+            $type = $validatedData['type'] ?? $coupon->type;
+            $value = $validatedData['value'] ?? $coupon->value;
+            $minOrderValue = $validatedData['min_order_value'] ?? $coupon->min_order_value;
+            if ($type === 'amount' && (float) $value > (float) $minOrderValue) {
+                return Helper::jsonErrorResponse('Discount value cannot exceed minimum order value.', 422);
+            }
         }
 
         try {
