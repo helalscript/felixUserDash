@@ -184,7 +184,16 @@ class CouponService
             $coupon->updateStatus();
             $coupon->refresh();
 
-            // Add user and package/addon info to each usage for the details page
+            // Map usages BEFORE refresh clears relations - re-load with relations for mapping
+            $coupon->load(['usages' => function ($query) {
+                $query->with([
+                    'user:id,name,email,phone',
+                    'order' => fn ($q) => $q->with('orderable'),
+                    'orderAddon' => fn ($q) => $q->with(['addon', 'order.orderable']),
+                ])->orderBy('used_at', 'desc');
+            }]);
+
+            // Add user and package/plan info to each usage for the details page
             $coupon->setRelation('usages', $coupon->usages->map(function ($usage) {
                 $usageData = [
                     'id' => $usage->id,
@@ -194,12 +203,13 @@ class CouponService
                     'order_addon_id' => $usage->order_addon_id,
                     'used_at' => $usage->used_at,
                     'user' => null,
-                    'package' => null,
-                    'addon' => null,
+                    'plan' => null,
+                    'applied_to' => null,
                     'order_number' => null,
                     'amount' => null,
                 ];
 
+                // User info - কোন User এই coupon ব্যবহার করেছে
                 if ($usage->relationLoaded('user') && $usage->user) {
                     $usageData['user'] = [
                         'id' => $usage->user->id,
@@ -209,36 +219,60 @@ class CouponService
                     ];
                 }
 
+                // Order (Package/Plan purchase) - কোন Package / Plan এ apply হয়েছে
                 if ($usage->order_id && $usage->relationLoaded('order') && $usage->order) {
                     $order = $usage->order;
                     $usageData['order_number'] = $order->order_number;
                     $usageData['amount'] = $order->amount;
+
                     if ($order->relationLoaded('orderable') && $order->orderable) {
-                        $usageData['package'] = [
-                            'id' => $order->orderable->id,
-                            'title' => $order->orderable->title ?? null,
-                            'subtitle' => $order->orderable->subtitle ?? null,
-                            'price' => $order->orderable->price ?? null,
-                        ];
+                        $orderable = $order->orderable;
+                        $usageData['applied_to'] = $orderable instanceof \App\Models\Package ? 'package' : 'addon';
+
+                        if ($orderable instanceof \App\Models\Package) {
+                            $usageData['plan'] = [
+                                'type' => 'package',
+                                'id' => $orderable->id,
+                                'title' => $orderable->title ?? null,
+                                'subtitle' => $orderable->subtitle ?? null,
+                                'price' => $orderable->price ?? null,
+                            ];
+                        } else {
+                            $usageData['plan'] = [
+                                'type' => 'addon',
+                                'id' => $orderable->id,
+                                'title' => $orderable->title ?? $orderable->sub_title ?? null,
+                                'sub_title' => $orderable->sub_title ?? null,
+                                'price' => $orderable->price ?? null,
+                            ];
+                        }
                     }
                 }
 
+                // OrderAddon - addon purchase, parent order has the package/plan
                 if ($usage->order_addon_id && $usage->relationLoaded('orderAddon') && $usage->orderAddon) {
                     $orderAddon = $usage->orderAddon;
                     $usageData['amount'] = $orderAddon->amount;
-                    $usageData['addon'] = [
+                    $usageData['applied_to'] = 'addon';
+
+                    $usageData['plan'] = [
+                        'type' => 'addon',
                         'id' => $orderAddon->addon?->id ?? $orderAddon->addon_id,
                         'title' => $orderAddon->addon?->title ?? $orderAddon->name,
                         'sub_title' => $orderAddon->addon?->sub_title ?? $orderAddon->sub_title ?? null,
                         'price' => $orderAddon->addon?->price ?? $orderAddon->amount ?? null,
                     ];
+
                     if ($orderAddon->relationLoaded('order') && $orderAddon->order?->relationLoaded('orderable') && $orderAddon->order->orderable) {
-                        $usageData['package'] = [
-                            'id' => $orderAddon->order->orderable->id,
-                            'title' => $orderAddon->order->orderable->title ?? null,
-                            'subtitle' => $orderAddon->order->orderable->subtitle ?? null,
-                            'price' => $orderAddon->order->orderable->price ?? null,
-                        ];
+                        $parentPackage = $orderAddon->order->orderable;
+                        if ($parentPackage instanceof \App\Models\Package) {
+                            $usageData['parent_package'] = [
+                                'id' => $parentPackage->id,
+                                'title' => $parentPackage->title ?? null,
+                                'subtitle' => $parentPackage->subtitle ?? null,
+                                'price' => $parentPackage->price ?? null,
+                            ];
+                        }
                         $usageData['order_number'] = $orderAddon->order->order_number;
                     }
                 }

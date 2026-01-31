@@ -37,7 +37,7 @@ class LoginController extends Controller
                 }
                 if ($user->trashed()) {
                     return Helper::jsonErrorResponse(
-                        'Your account has been deactivated by the administrator. If you believe this is a mistake or need further assistance, please contact support.',
+                        'Your account has been deactivated. Please contact support.',
                         403,
                         ['email' => 'Your account has been deactivated by the administrator.']
                     );
@@ -50,7 +50,7 @@ class LoginController extends Controller
                 }
                 if ($user->trashed()) {
                     return Helper::jsonErrorResponse(
-                        'Your account has been deactivated by the administrator. If you believe this is a mistake or need further assistance, please contact support.',
+                        'Your account has been deactivated. Please contact support.',
                         403,
                         ['user_name' => 'Your account has been deactivated by the administrator.']
                     );
@@ -73,10 +73,10 @@ class LoginController extends Controller
             $user->last_login_at = now();
             $user->login_count = ($user->login_count ?? 0) + 1;
             $user->last_login_ip = $ipAddress;
-            
-            // Try to get location from IP (optional - can be enhanced with IP geolocation service)
-            // For now, we'll store the IP and location can be determined later
-            $user->location = $this->getLocationFromIp($ipAddress);
+
+            $geoData = $this->getGeoFromIp($ipAddress);
+            $user->location = $geoData['location'];
+            $user->timezone = $geoData['timezone'];
             $user->save();
             
             // * Generate token if email is verified
@@ -127,22 +127,24 @@ class LoginController extends Controller
     }
 
     /**
-     * Get location from IP address
-     * 
-     * @param string $ip
-     * @return string|null
+     * Get location and timezone from IP address using ip-api.com
+     *
+     * @param  string  $ip
+     * @return array{location: string|null, timezone: string|null}
      */
-    private function getLocationFromIp(string $ip): ?string
+    private function getGeoFromIp(string $ip): array
     {
+        $result = ['location' => null, 'timezone' => null];
+
         try {
-            // Skip local/private IPs
-            if (!filter_var($ip, FILTER_VALIDATE_IP, FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE)) {
-                return 'Local';
+            if (! filter_var($ip, FILTER_VALIDATE_IP, FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE)) {
+                $result['location'] = 'Local';
+
+                return $result;
             }
 
-            // Use a free IP geolocation service (ip-api.com)
-            $response = @file_get_contents("http://ip-api.com/json/{$ip}?fields=status,country,regionName,city");
-            
+            $response = @file_get_contents("http://ip-api.com/json/{$ip}?fields=status,country,regionName,city,timezone");
+
             if ($response) {
                 $data = json_decode($response, true);
                 if (isset($data['status']) && $data['status'] === 'success') {
@@ -151,13 +153,14 @@ class LoginController extends Controller
                         $data['regionName'] ?? null,
                         $data['country'] ?? null,
                     ]);
-                    return !empty($locationParts) ? implode(', ', $locationParts) : null;
+                    $result['location'] = ! empty($locationParts) ? implode(', ', $locationParts) : null;
+                    $result['timezone'] = $data['timezone'] ?? null;
                 }
             }
         } catch (Exception $e) {
-            Log::error('LoginController::getLocationFromIp - ' . $e->getMessage());
+            Log::error('LoginController::getGeoFromIp - '.$e->getMessage());
         }
 
-        return null;
+        return $result;
     }
 }
