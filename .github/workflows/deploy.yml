@@ -21,9 +21,9 @@ jobs:
         if: github.ref == 'refs/heads/dev'
         uses: SamKirkland/FTP-Deploy-Action@4.3.0
         with:
-          server: ${{ secrets.FTP_SERVER_1 }}
-          username: ${{ secrets.FTP_USER_1 }}
-          password: ${{ secrets.FTP_PASSWORD_1 }}
+          server: ${{ secrets.FTP_SERVER }}
+          username: ${{ secrets.FTP_USER }}
+          password: ${{ secrets.FTP_PASSWORD }}
 
       # 🔹 Deploy to SERVER 2 (version2 branch)
       - name: Deploy to Server 2 (VERSION2)
