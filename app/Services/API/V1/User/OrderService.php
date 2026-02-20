@@ -4,6 +4,7 @@ namespace App\Services\API\V1\User;
 
 use App\Helpers\Helper;
 use App\Models\Addon;
+use App\Models\Coupon;
 use App\Models\Order;
 use App\Models\OrderDetail;
 use App\Models\Package;
@@ -29,7 +30,7 @@ class OrderService
     public function index($request)
     {
         try {
-            $perPage = $request->per_page ?? 10;
+            $perPage = $request->per_page ?? 100;
             $search = $request->search ?? null;
             $dateFrom = $request->date_from ?? null;
             $dateTo = $request->date_to ?? null;
@@ -66,7 +67,7 @@ class OrderService
                 $query->where('start_date', '<=', $dateTo);
             }
 
-            $orders = $query->paginate($perPage);
+            $orders = $query->latest()->paginate($perPage);
 
             return $orders;
         } catch (Exception $e) {
@@ -85,7 +86,31 @@ class OrderService
         try {
             DB::beginTransaction();
             $type = isset($validatedData['package_id']) ? 'package' : 'addon';
-            $price = $this->getPrice(isset($validatedData['package_id']) ? $validatedData['package_id'] : $validatedData['addon_id'], $type);
+            $originalPrice = $this->getPrice(isset($validatedData['package_id']) ? $validatedData['package_id'] : $validatedData['addon_id'], $type);
+
+            // Handle coupon if provided
+            $coupon = null;
+            $discountAmount = 0;
+            $finalAmount = $originalPrice;
+
+            if (isset($validatedData['coupon_code']) && !empty($validatedData['coupon_code'])) {
+                $coupon = Coupon::where('code', $validatedData['coupon_code'])->first();
+                
+                if ($coupon) {
+                    $coupon->updateStatus();
+                    $coupon->refresh();
+
+                    // Validate coupon (min order value, coupon value must not exceed order value)
+                    if ($coupon->isValid() && $originalPrice >= $coupon->min_order_value && $coupon->canBeAppliedTo($originalPrice)) {
+                        $discountAmount = $coupon->calculateDiscount($originalPrice);
+                        $finalAmount = $originalPrice - $discountAmount;
+                    } else {
+                        throw new Exception('Invalid coupon, order amount does not meet minimum requirement, or coupon value exceeds order value.');
+                    }
+                } else {
+                    throw new Exception('Coupon code not found.');
+                }
+            }
 
             $order = Order::create([
                 'user_id' => $this->user->id,
@@ -95,9 +120,16 @@ class OrderService
                 'progress' => 0,
                 'start_date' => now(),
                 'end_date' => null,
-                'amount' => $price,
+                'amount' => $finalAmount,
+                'original_amount' => $originalPrice,
+                'discount_amount' => $discountAmount,
+                'coupon_id' => $coupon ? $coupon->id : null,
+                'coupon_code' => $coupon ? $coupon->code : null,
+                'coupon_value' => $coupon ? $coupon->value : null,
                 'status' => 'pending',
             ]);
+
+            // Coupon usage is recorded only when payment completes (in StripeService/PayPalService)
 
             // file upload
             if (isset($validatedData['attachment']) && ! empty($validatedData['attachment'])) {
@@ -117,7 +149,7 @@ class OrderService
                 'requirement' => isset($validatedData['business_requirement_description']) ? $validatedData['business_requirement_description'] : null,
                 'voice_preference' => isset($validatedData['voice_preference']) ? $validatedData['voice_preference'] : null,
                 'attachment' => isset($validatedData['attachment']) ? $validatedData['attachment'] : null,
-                'amount' => $price,
+                'amount' => $finalAmount,
                 'is_filled_by_user' => false,
             ]);
             DB::commit();

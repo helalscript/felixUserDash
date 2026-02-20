@@ -132,4 +132,32 @@ class SystemSettingController extends Controller
             return Helper::jsonErrorResponse($e->getMessage(), 500);
         }
     }
+
+    public function getPaypalSetting()
+    {
+        try {
+            $paypalSettings = $this->systemSettingService->getPaypalSetting();
+            return Helper::jsonResponse(true, 'PayPal settings fetched successfully', 200, $paypalSettings);
+        } catch (Exception $e) {
+            Log::error('SystemSettingController::getPaypalSetting'.$e->getMessage());
+            return Helper::jsonErrorResponse($e->getMessage(), 500);
+        }
+    }
+
+    public function updatePaypalSetting(Request $request)
+    {
+        $validatedData = $request->validate([
+            'paypal_client_id' => 'nullable|string',
+            'paypal_client_secret' => 'nullable|string',
+            'paypal_mode' => 'nullable|in:sandbox,live',
+            'paypal_webhook_id' => 'nullable|string',
+        ]);
+        try {
+            $paypalSettings = $this->systemSettingService->updatePaypalSetting($validatedData);
+            return Helper::jsonResponse(true, 'PayPal settings updated successfully', 200);
+        } catch (Exception $e) {
+            Log::error('SystemSettingController::updatePaypalSetting'.$e->getMessage());
+            return Helper::jsonErrorResponse($e->getMessage(), 500);
+        }
+    }
 }

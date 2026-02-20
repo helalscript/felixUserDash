@@ -31,6 +31,7 @@ class User extends Authenticatable implements JWTSubject
         'brithdate',
         'gender',
         'password',
+        'password_changed_at',
         'otp',
         'is_otp_verified',
         'otp_expires_at',
@@ -38,6 +39,10 @@ class User extends Authenticatable implements JWTSubject
         'reset_password_token_expire_at',
         'email_verified_at',
         'last_seen',
+        'last_login_at',
+        'login_count',
+        'last_login_ip',
+        'location',
         'role',
         'language_code',
         'timezone',
@@ -51,6 +56,7 @@ class User extends Authenticatable implements JWTSubject
      */
     protected $hidden = [
         'password',
+        'password_changed_at',
         'otp',
         'otp_expires_at',
         'email_verified_at',
@@ -77,7 +83,9 @@ class User extends Authenticatable implements JWTSubject
             'otp_expires_at' => 'datetime',
             'reset_password_token_expire_at' => 'datetime',
             'last_seen' => 'datetime',
+            'last_login_at' => 'datetime',
             'password' => 'hashed',
+            'password_changed_at' => 'datetime',
             'created_at' => 'datetime',
             'updated_at' => 'datetime',
             'deleted_at' => 'datetime',
@@ -119,11 +127,29 @@ class User extends Authenticatable implements JWTSubject
      */
     public function getJWTCustomClaims()
     {
-        return [];
+        return [
+            'password_changed_at' => $this->password_changed_at?->timestamp,
+        ];
     }
 
     public function orders()
     {
         return $this->hasMany(Order::class);
+    }
+
+    /**
+     * Get the coupons assigned to this user.
+     */
+    public function coupons()
+    {
+        return $this->belongsToMany(Coupon::class)->withPivot('checkout_link')->withTimestamps();
+    }
+
+    /**
+     * Get the coupon usages by this user.
+     */
+    public function couponUsages()
+    {
+        return $this->hasMany(CouponUsage::class);
     }
 }

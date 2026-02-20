@@ -1,19 +1,35 @@
-name: Deploy project to our server
+name: Deploy project to our servers
+
 on:
   push:
     branches:
       - dev
+      - version2
+
 jobs:
-  FTP-Deploy-Action:
-    name: FTP-Deploy-Action
+  deploy:
     runs-on: ubuntu-latest
+
     steps:
-      - uses: actions/checkout@v2.1.0
+      - name: Checkout code
+        uses: actions/checkout@v2.1.0
         with:
           fetch-depth: 2
-      - name: FTP-Deploy-Action
+
+      # 🔹 Deploy to SERVER 1 (dev branch)
+      - name: Deploy to Server 1 (DEV)
+        if: github.ref == 'refs/heads/dev'
         uses: SamKirkland/FTP-Deploy-Action@4.3.0
         with:
-          server: ${{ secrets.ftp_server }}
-          username: ${{ secrets.ftp_user }}
-          password: ${{ secrets.ftp_password }}
+          server: ${{ secrets.FTP_SERVER_1 }}
+          username: ${{ secrets.FTP_USER_1 }}
+          password: ${{ secrets.FTP_PASSWORD_1 }}
+
+      # 🔹 Deploy to SERVER 2 (version2 branch)
+      - name: Deploy to Server 2 (VERSION2)
+        if: github.ref == 'refs/heads/version2'
+        uses: SamKirkland/FTP-Deploy-Action@4.3.0
+        with:
+          server: ${{ secrets.FTP_SERVER_2 }}
+          username: ${{ secrets.FTP_USER_2 }}
+          password: ${{ secrets.FTP_PASSWORD_2 }}

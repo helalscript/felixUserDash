@@ -44,6 +44,15 @@ class AuthenticatedSessionController extends Controller
         if ($user->role !== 'admin') {
             return redirect('/')->with('error', 'You are not authorized to access the admin panel.');
         }
+        
+        // Track login information
+        $ipAddress = $request->ip();
+        $user->last_login_at = now();
+        $user->login_count = ($user->login_count ?? 0) + 1;
+        $user->last_login_ip = $ipAddress;
+        $user->location = $this->getLocationFromIp($ipAddress);
+        $user->save();
+        
         Auth::login($user, $request->boolean('remember'));
 
         $request->session()->regenerate();
@@ -63,5 +72,40 @@ class AuthenticatedSessionController extends Controller
         $request->session()->regenerateToken();
 
         return redirect('/');
+    }
+
+    /**
+     * Get location from IP address
+     * 
+     * @param string $ip
+     * @return string|null
+     */
+    private function getLocationFromIp(string $ip): ?string
+    {
+        try {
+            // Skip local/private IPs
+            if (!filter_var($ip, FILTER_VALIDATE_IP, FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE)) {
+                return 'Local';
+            }
+
+            // Use a free IP geolocation service (ip-api.com)
+            $response = @file_get_contents("http://ip-api.com/json/{$ip}?fields=status,country,regionName,city");
+            
+            if ($response) {
+                $data = json_decode($response, true);
+                if (isset($data['status']) && $data['status'] === 'success') {
+                    $locationParts = array_filter([
+                        $data['city'] ?? null,
+                        $data['regionName'] ?? null,
+                        $data['country'] ?? null,
+                    ]);
+                    return !empty($locationParts) ? implode(', ', $locationParts) : null;
+                }
+            }
+        } catch (\Exception $e) {
+            // Silently fail - location is optional
+        }
+
+        return null;
     }
 }

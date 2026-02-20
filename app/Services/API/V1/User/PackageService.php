@@ -16,7 +16,7 @@ class PackageService
     public function index($request)
     {
         try {
-            $per_page = $request->per_page ?? 25;
+            $per_page = $request->per_page ?? 100;
             $packages = Package::select('id', 'title', 'subtitle', 'description', 'price', 'explore_link', 'specification_text', 'features', 'is_popular', 'position', 'icon_images', 'status')
                 ->paginate($per_page);
 

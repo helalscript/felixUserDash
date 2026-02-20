@@ -4,6 +4,7 @@ namespace App\Http\Middleware;
 
 use Closure;
 use Illuminate\Http\Request;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Auth;
 use Symfony\Component\HttpFoundation\Response;
 
@@ -33,7 +34,10 @@ class IsUser
                 'message' => 'Access denied. User role required.',
             ], 403);
         }
-
+            // Update 'last_seen' timestamp every time a user makes a request
+            // $user->update(['last_seen' => Carbon::now()]);
+            $user->touch('last_seen');
+       
         return $next($request);
     }
 }

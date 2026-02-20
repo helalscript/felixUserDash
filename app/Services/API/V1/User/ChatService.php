@@ -27,7 +27,7 @@ class ChatService
     public function index($request)
     {
         try {
-            $perPage = $request->per_page ?? 10;
+            $perPage = $request->per_page ?? 100;
             
             // Get all chats where the current user is a participant
             $chatIds = ChatUser::where('user_id', $this->user->id)

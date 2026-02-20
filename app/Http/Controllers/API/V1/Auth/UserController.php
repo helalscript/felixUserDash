@@ -4,11 +4,7 @@ namespace App\Http\Controllers\API\V1\Auth;
 
 use App\Helpers\Helper;
 use App\Http\Controllers\Controller;
-use App\Models\Contractor;
-use App\Models\License;
-use App\Models\NotificationSetting;
 use App\Models\User;
-use App\Notifications\UserRegistrationNotification;
 use Exception;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -38,7 +34,7 @@ class UserController extends Controller
             'name' => 'required|string|max:100',
             'avatar' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:10240',
             'cover_photo' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:10240',
-            'phone' => 'nullable|string|unique:users,phone,' . auth()->user()->id . '|max:20|min:10',
+            'phone' => 'nullable|string|regex:/^(\+?\d{1,4}[\s-]?)?(\(?\d{1,3}\)?[\s-]?)?[\d\s-]{7,15}$/|max:20|unique:users,phone,' . auth()->user()->id . ',id,deleted_at,NULL',
             'password' => 'nullable|string|min:6|confirmed',
             'gender' => 'nullable|in:male,female,others',
             'brithdate' => 'nullable|date|date_format:Y-m-d|before:today',

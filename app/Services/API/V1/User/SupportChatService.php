@@ -188,7 +188,7 @@ class SupportChatService
     public function getMessages($request)
     {
         try {
-            $perPage = $request->per_page ?? 20;
+            $perPage = $request->per_page ?? 100;
             $supportChat = SupportChat::where('user_id', $this->user->id)
                 ->with(['messages'=> function ($query) use ($perPage) {
                     $query->orderBy('id', 'asc')

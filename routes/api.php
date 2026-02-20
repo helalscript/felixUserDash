@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\API\V1\Admin\Addon\AddonController as AdminAddonController;
+use App\Http\Controllers\API\V1\Admin\Coupon\CouponController as AdminCouponController;
 use App\Http\Controllers\API\V1\Admin\Order\OrderController as AdminOrderController;
 use App\Http\Controllers\API\V1\Admin\Package\PackageController as AdminPackageController;
 use App\Http\Controllers\API\V1\Admin\SupportChat\SupportChatController as AdminSupportChatController;
@@ -13,8 +14,10 @@ use App\Http\Controllers\API\V1\Auth\RegisterController;
 use App\Http\Controllers\API\V1\Auth\ResetPasswordController;
 use App\Http\Controllers\API\V1\Auth\SocialLoginController;
 use App\Http\Controllers\API\V1\Auth\UserController;
+use App\Http\Controllers\API\V1\Public\CheckoutLinkController;
 use App\Http\Controllers\API\V1\Public\GeneralSettingController;
 use App\Http\Controllers\API\V1\User\AddonController as UserAddonController;
+use App\Http\Controllers\API\V1\User\CouponController as UserCouponController;
 use App\Http\Controllers\API\V1\User\InvoiceController as UserInvoiceController;
 use App\Http\Controllers\API\V1\User\NotificationController;
 use App\Http\Controllers\API\V1\User\OrderAddonController as UserOrderAddonController;
@@ -40,7 +43,7 @@ Route::group(['middleware' => ['guest:api']], function ($router) {
     Route::post('/social-login', [SocialLoginController::class, 'SocialLogin']);
 });
 
-Route::group(['middleware' => 'auth:api'], function ($router) {
+Route::group(['middleware' => ['auth:api', 'check_password_reset']], function ($router) {
     Route::get('/refresh-token', [LoginController::class, 'refreshToken']);
     Route::post('/logout', [LogoutController::class, 'logout']);
     Route::get('/me', [UserController::class, 'me']);
@@ -49,7 +52,7 @@ Route::group(['middleware' => 'auth:api'], function ($router) {
 });
 
 // this is for user
-Route::group(['middleware' => ['auth:api', 'is_user']], function ($router) {
+Route::group(['middleware' => ['auth:api', 'check_password_reset', 'is_user']], function ($router) {
     // addons
     Route::apiResource('addons', UserAddonController::class)->only(['index', 'show']);
 
@@ -75,14 +78,19 @@ Route::group(['middleware' => ['auth:api', 'is_user']], function ($router) {
 
     //invoices
     Route::apiResource('invoices', UserInvoiceController::class)->only(['index', 'show']);
+
+    // coupons
+    Route::post('coupons/validate', [UserCouponController::class, 'validate']);
 });
 // this is for user payment webhook in public route
 Route::post('payments/stripe/handle-webhook', [UserPaymentController::class, 'handleWebhook']);
+Route::post('payments/paypal/handle-webhook', [UserPaymentController::class, 'handlePaypalWebhook']);
 
 // this is for admin
-Route::group(['middleware' => ['auth:api', 'is_admin'], 'prefix' => 'admin','as' => 'admin.'], function ($router) {
+Route::group(['middleware' => ['auth:api', 'check_password_reset', 'is_admin'], 'prefix' => 'admin','as' => 'admin.'], function ($router) {
     // users
     Route::apiResource('users', AdminUserController::class);
+    Route::post('users/reset-password/{id}', [AdminUserController::class, 'resetPassword']);
     Route::apiResource('packages', AdminPackageController::class);
     Route::apiResource('addons', AdminAddonController::class);
 
@@ -97,6 +105,8 @@ Route::group(['middleware' => ['auth:api', 'is_admin'], 'prefix' => 'admin','as'
         Route::get('clear-cache', [SystemSettingController::class, 'clearCache']);
         Route::get('stripe-settings', [SystemSettingController::class, 'getStripeSetting']);
         Route::post('stripe-settings', [SystemSettingController::class, 'updateStripeSetting']);
+        Route::get('paypal-settings', [SystemSettingController::class, 'getPaypalSetting']);
+        Route::post('paypal-settings', [SystemSettingController::class, 'updatePaypalSetting']);
     });
 
     // support chats
@@ -107,10 +117,16 @@ Route::group(['middleware' => ['auth:api', 'is_admin'], 'prefix' => 'admin','as'
     Route::apiResource('orders', AdminOrderController::class)->except('update', 'store');
     Route::post('orders/update-status/{id}', [AdminOrderController::class, 'updateStatus']);
     Route::post('orders/file-upload/{id}', [AdminOrderController::class, 'fileUpload']);
+
+    // coupons
+    Route::post('coupons/generate-checkout-link/{id}', [AdminCouponController::class, 'generateCheckoutLink']);
+    Route::get('coupons/checkout-links/{id}', [AdminCouponController::class, 'getCheckoutLinks']);
+    Route::apiResource('coupons', AdminCouponController::class);
 });
 
 // this is for public
 Route::get('system-info', [GeneralSettingController::class, 'getSystemInfo']);
+Route::get('checkout-link/validate', [CheckoutLinkController::class, 'validate']);
 Route::get('dynamic-pages', [GeneralSettingController::class, 'getDynamicPages']);
 Route::get('dynamic-pages/{page_slug}', [GeneralSettingController::class, 'showDaynamicPage']);
 Route::apiResource('packages', UserPackageController::class)->only(['index', 'show']);

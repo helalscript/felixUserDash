@@ -39,6 +39,7 @@ class OrderAddonController extends Controller
         $validated = $request->validate([
             'order_id' => 'required|exists:orders,id',
             'addon_id' => 'required|exists:addons,id',
+            'coupon_code' => 'nullable|string',
         ]);
         try {
             $orderAddon = $this->orderAddonService->store($validated);
@@ -46,6 +47,7 @@ class OrderAddonController extends Controller
             return Helper::jsonResponse(true, 'Order addon created successfully', 200, $orderAddon);
         } catch (Exception $e) {
             Log::error('OrderAddonController::store'.$e->getMessage());
+            return Helper::jsonErrorResponse($e->getMessage(), 500);
         }
     }
 

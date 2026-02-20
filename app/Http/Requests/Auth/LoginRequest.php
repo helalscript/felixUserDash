@@ -41,6 +41,16 @@ class LoginRequest extends FormRequest
     {
         $this->ensureIsNotRateLimited();
 
+        // Check for deactivated (soft-deleted) account first
+        $user = User::withTrashed()->where('email', $this->string('email'))->first();
+        if ($user && $user->trashed()) {
+            RateLimiter::hit($this->throttleKey());
+
+            throw ValidationException::withMessages([
+                'email' => 'Your account has been deactivated by the administrator. If you believe this is a mistake or need further assistance, please contact support.',
+            ]);
+        }
+
         /** @var User|null $user */
         $user = Auth::getProvider()->retrieveByCredentials($this->only('email', 'password'));
 

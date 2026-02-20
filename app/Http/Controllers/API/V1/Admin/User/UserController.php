@@ -107,4 +107,24 @@ class UserController extends Controller
             return Helper::jsonErrorResponse($e->getMessage(), 500);
         }
     }
+
+    /**
+     * Reset user password.
+     */
+    public function resetPassword(Request $request, string $id)
+    {
+        $validatedData = $request->validate([
+            'password' => 'required|string|min:8',
+        ]);
+
+        try {
+            $user = $this->userService->resetPassword($validatedData['password'], $id);
+
+            return Helper::jsonResponse(true, 'Password reset successfully', 200);
+        } catch (Exception $e) {
+            Log::error('Admin\\UserController::resetPassword'.$e->getMessage());
+
+            return Helper::jsonErrorResponse($e->getMessage(), 500);
+        }
+    }
 }

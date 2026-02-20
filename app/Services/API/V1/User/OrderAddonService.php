@@ -3,6 +3,7 @@
 namespace App\Services\API\V1\User;
 
 use App\Models\Addon;
+use App\Models\Coupon;
 use App\Models\Order;
 use App\Models\OrderAddon;
 use Exception;
@@ -26,7 +27,7 @@ class OrderAddonService
     public function index($request)
     {
         try {
-            $per_page = $request->per_page ?? 25;
+            $per_page = $request->per_page ?? 100;
             $query = OrderAddon::query()
             ->with(['addon', 'order', 'payments', 'invoices'])
             ->where('user_id', $this->user->id)
@@ -69,7 +70,32 @@ class OrderAddonService
             $addon = Addon::find(isset($validatedData['addon_id']) ? $validatedData['addon_id'] : null);
             if (!$addon) {
                 throw new Exception('Addon not found');
-            } 
+            }
+
+            $originalPrice = $addon->price;
+            $coupon = null;
+            $discountAmount = 0;
+            $finalAmount = $originalPrice;
+
+            // Handle coupon if provided
+            if (isset($validatedData['coupon_code']) && !empty($validatedData['coupon_code'])) {
+                $coupon = Coupon::where('code', $validatedData['coupon_code'])->first();
+
+                if ($coupon) {
+                    $coupon->updateStatus();
+                    $coupon->refresh();
+
+                    if ($coupon->isValid() && $originalPrice >= $coupon->min_order_value && $coupon->canBeAppliedTo($originalPrice)) {
+                        $discountAmount = $coupon->calculateDiscount($originalPrice);
+                        $finalAmount = $originalPrice - $discountAmount;
+                    } else {
+                        throw new Exception('Invalid coupon, addon amount does not meet minimum requirement, or coupon value exceeds addon value.');
+                    }
+                } else {
+                    throw new Exception('Coupon code not found.');
+                }
+            }
+
             $orderAddon = OrderAddon::create([
                 'order_id' => $validatedData['order_id'],
                 'addon_id' => $addon->id,
@@ -77,7 +103,13 @@ class OrderAddonService
                 'name' => $addon->title,
                 'sub_title' => $addon->sub_title,
                 'description' => $addon->description,
-                'amount' => $addon->price,
+                'amount' => $finalAmount,
+                'original_amount' => $originalPrice,
+                'discount_amount' => $discountAmount,
+                'coupon_id' => $coupon?->id,
+                'coupon_code' => $coupon?->code,
+                'coupon_value' => $coupon?->value,
+                'status' => 'pending',
             ]);
             DB::commit();
             return $orderAddon;
